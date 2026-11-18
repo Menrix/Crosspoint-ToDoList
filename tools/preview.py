@@ -12,7 +12,7 @@ font = ImageFont.truetype(FONT, PPEM)
 asc, desc = font.getmetrics()
 line_h = asc + desc
 
-title = "Einkauf".upper()
+title = (sys.argv[6] if len(sys.argv) > 6 else "Einkauf").upper()
 TITLE_PPEM = round(26 * 150 / 72)
 tfont = ImageFont.truetype(FONT, TITLE_PPEM)
 tasc, tdesc = tfont.getmetrics()
@@ -50,11 +50,36 @@ img = Image.open("paper.pbm").convert("L")
 img = Image.eval(img, lambda v: v)  # PBM: 0 = black
 txt = Image.new("L", (W, H), 255)
 d = ImageDraw.Draw(txt)
+avail = right - textX
+if d.textlength(title, font=tfont) > avail:
+    tfont = ImageFont.truetype(FONT, PPEM); tasc = font.getmetrics()[0]
+    while d.textlength(title, font=tfont) > avail and len(title) > 2:
+        title = title[:-2] + "…"
 for ox in (0, 1, 2):  # thicker strokes, like a felt pen
     d.text((textX + ox, titleY + pitch - 10 - tasc), title, font=tfont, fill=0)
-info = f"{sum(1 for _, dn in entries if not dn)} von {len(entries)} offen"
-small = ImageFont.truetype("DejaVuSans.ttf", 17) if False else ImageFont.load_default(size=17)
-d.text((right - d.textlength(info, font=small), titleY + pitch - 30), info, font=small, fill=0)
+done_n = sum(1 for _, dn in entries if dn)
+hidden = len(sys.argv) > 5 and sys.argv[5] == "hidden"
+import math
+total_n = len(entries)
+small = ImageFont.truetype(FONT, 30)
+sasc, sdesc = small.getmetrics()
+foot_base = 800 - 22                      # baseline of the footer text
+# hand-drawn separator: a slightly wavy pen stroke across the page
+ly = foot_base - sasc - 14
+pts = [(x, ly + 0.8 * math.sin(x / 53.0) + 0.3 * math.sin(x / 17.0)) for x in range(textX - 20, right + 1, 3)]
+d.line(pts, fill=0, width=3)
+# eye centred on the middle of the lower-case letters
+xb = small.getbbox('x')            # x-height: centre the eye on the lower-case letters
+ex = textX + 16; ey = int(foot_base - sasc + (xb[1] + xb[3]) / 2)
+d.ellipse((ex - 14, ey - 8, ex + 14, ey + 8), outline=0, width=3)
+d.ellipse((ex - 4, ey - 4, ex + 4, ey + 4), fill=0)
+if hidden:
+    d.line((ex - 15, ey + 11, ex + 15, ey - 11), fill=0, width=4)
+d.text((ex + 24, foot_base - sasc), "show" if hidden else "hide", font=small, fill=0)
+cnt = f"{done_n}/{total_n} done"
+d.text((textX + 140, foot_base - sasc), cnt, font=small, fill=0)
+pg = "1/2"
+d.text((right - d.textlength(pg, font=small), foot_base - sasc), pg, font=small, fill=0)
 for (first, lines) in layout:
     for k, l in enumerate(lines):
         rule = listTop + (first + k + 1) * pitch - 6

@@ -4,6 +4,7 @@
 #include <EpdFontFamily.h>
 #include <GfxRenderer.h>
 #include <I18n.h>
+#include <builtinFonts/patrickhand_14_regular.h>
 #include <builtinFonts/patrickhand_20_regular.h>
 #include <builtinFonts/patrickhand_26_regular.h>
 #include <esp_random.h>
@@ -24,14 +25,17 @@ constexpr unsigned long kMenuHoldMs = 700;  // X3/X4: Confirm held this long = s
 // Handwriting (Patrick Hand, SIL Open Font License), built into the firmware for the lists only.
 constexpr int kListFontId = 0x4C495354;   // "LIST"
 constexpr int kTitleFontId = 0x4C495448;  // "LITH"
+constexpr int kSmallFontId = 0x4C495346;  // "LISF"
 EpdFont listFont(&patrickhand_20_regular);
 EpdFont titleFont(&patrickhand_26_regular);
+EpdFont smallFont(&patrickhand_14_regular);
 
 void registerFonts(GfxRenderer& renderer) {
   static bool done = false;
   if (done) return;
   renderer.insertFont(kListFontId, EpdFontFamily(20, &listFont));
   renderer.insertFont(kTitleFontId, EpdFontFamily(26, &titleFont));
+  renderer.insertFont(kSmallFontId, EpdFontFamily(14, &smallFont));
   done = true;
 }
 }  // namespace
@@ -221,31 +225,46 @@ void ListReaderActivity::renderBook() {
   };
   listpaper::paintPaper(paper, paperSeed, px);
 
-  // Header: list name as a headline (upper case, felt-pen strokes), counts on the right.
-  const int titleAscender = renderer.getFontAscenderSize(kTitleFontId);
+  // Header: the list name as a headline (upper case, felt-pen strokes). A long name is written
+  // one size smaller, and only cut with "..." if even that does not fit.
   const int titleBaseline = paper.firstRuleY - 6;
-  char info[96];
-  if (saveFailed) {
-    snprintf(info, sizeof(info), "%s", tr(STR_TODO_SAVE_FAILED));
-  } else {
-    snprintf(info, sizeof(info), tr(STR_TODO_OPEN_COUNT), todolist::countOpen(items), static_cast<int>(items.size()));
-    if (hideDone) {
-      const size_t used = strlen(info);
-      snprintf(info + used, sizeof(info) - used, " \xC2\xB7 %s", tr(STR_TODO_DONE_HIDDEN));
-    }
+  const int titleWidth = std::max(40, paper.right - paper.textX - 4);
+  std::string headline = todolist::toHeadline(listName);
+  int headFont = kTitleFontId;
+  if (renderer.getTextWidth(headFont, headline.c_str()) > titleWidth) {
+    headFont = kListFontId;
+    headline = renderer.truncatedText(headFont, headline.c_str(), titleWidth);
   }
-  if (pages.size() > 1) {
-    const size_t used = strlen(info);
-    snprintf(info + used, sizeof(info) - used, " \xC2\xB7 %d/%d", currentPage + 1, static_cast<int>(pages.size()));
-  }
-  const int infoFont = UI_10_FONT_ID;
-  const int infoW = renderer.getTextWidth(infoFont, info);
-  const int infoX = paper.right - infoW;
-  renderer.drawText(infoFont, infoX, titleBaseline - renderer.getFontAscenderSize(infoFont), info);
-  const std::string headline = renderer.truncatedText(kTitleFontId, todolist::toHeadline(listName).c_str(),
-                                                      std::max(40, infoX - 12 - paper.textX));
+  const int headAscender = renderer.getFontAscenderSize(headFont);
   for (int ox = 0; ox < 3; ox++) {  // three strokes side by side read like a felt pen
-    renderer.drawText(kTitleFontId, paper.textX + ox, titleBaseline - titleAscender, headline.c_str(), true);
+    renderer.drawText(headFont, paper.textX + ox, titleBaseline - headAscender, headline.c_str(), true);
+  }
+
+  // Footer, under a pen line: eye + "hide"/"show" (what the reader-menu gesture does next),
+  // "3/9 done", and the page. Only an error message replaces it.
+  listpaper::paintFooterRule(paper, px);
+  const int smallAscender = renderer.getFontAscenderSize(kSmallFontId);
+  const int footY = paper.footerBaseline - smallAscender;
+  if (saveFailed) {
+    renderer.drawText(kSmallFontId, paper.textX, footY, tr(STR_TODO_SAVE_FAILED), true);
+  } else {
+    const int doneCount = static_cast<int>(items.size()) - todolist::countOpen(items);
+    if (doneCount > 0) {
+      // the eye sits on the middle of the lower-case letters
+      const int xHeight = std::max(6, smallAscender * 7 / 16);
+      listpaper::paintEye(paper.textX + 16, paper.footerBaseline - xHeight / 2, hideDone, px);
+      renderer.drawText(kSmallFontId, paper.textX + 40, footY, hideDone ? tr(STR_TODO_SHOW) : tr(STR_TODO_HIDE), true);
+    }
+    char count[32];
+    snprintf(count, sizeof(count), tr(STR_TODO_DONE_COUNT), doneCount, static_cast<int>(items.size()));
+    char page[16] = "";
+    if (pages.size() > 1) snprintf(page, sizeof(page), "%d/%d", currentPage + 1, static_cast<int>(pages.size()));
+    const int pageW = page[0] ? renderer.getTextWidth(kSmallFontId, page) : 0;
+    if (page[0]) renderer.drawText(kSmallFontId, paper.right - pageW, footY, page, true);
+    // "3/9 done" in a fixed column after "hide"/"show"; moved left only if a wide page number needs it
+    const int countW = renderer.getTextWidth(kSmallFontId, count);
+    const int countX = std::min(paper.textX + 140, paper.right - pageW - (page[0] ? 24 : 0) - countW);
+    renderer.drawText(kSmallFontId, countX, footY, count, true);
   }
 
   // Entries: box in the margin on the entry's first line, text on the ruled lines.

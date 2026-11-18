@@ -35,6 +35,8 @@ struct Geometry {
   int listTop = 0;    // top of the first entry line
   int pitch = 0;      // distance between ruled lines = one text line
   int lineCount = 0;  // ruled lines that fit on the page
+  int footerRuleY = 0; // pen line above the footer
+  int footerBaseline = 0;  // baseline of the footer text
   int holeX = 0;      // top punch hole
   int holeY = 0;
   int holeR = 0;
@@ -61,7 +63,10 @@ inline Geometry geometry(const int width, const int height, const int lineHeight
   g.holeX = (g.paperLeft + g.marginX) / 2 + 6;
   g.holeY = g.firstRuleY - g.pitch / 2 - 2;
   g.listTop = g.firstRuleY + 4;
-  const int usable = height - bottom - 10 - g.listTop;
+  // Footer: a pen line, then "hide/show  3/9 done  1/2" on one small line.
+  g.footerBaseline = height - bottom - 16;
+  g.footerRuleY = g.footerBaseline - std::max(30, lineHeight * 3 / 4) - 8;
+  const int usable = g.footerRuleY - 6 - g.listTop;
   g.lineCount = std::max(1, usable / g.pitch);
   return g;
 }
@@ -170,6 +175,19 @@ inline void paintPaper(const Geometry& g, const uint32_t seed, Px&& px) {
       }
     }
   }
+  // Rounded corners on the right, like a real sheet of paper.
+  const int cr = std::max(12, g.width / 24);
+  for (int y = 0; y < cr; y++) {
+    for (int x = 0; x < cr; x++) {
+      const int dx = cr - x;
+      const int dy = cr - y;
+      if (dx * dx + dy * dy > cr * cr) {
+        px(g.width - cr + (cr - 1 - x), y, true);                 // top right
+        px(g.width - cr + (cr - 1 - x), g.height - 1 - y, true);  // bottom right
+      }
+    }
+  }
+
   // Punch hole at the top.
   fillCircle(px, g.holeX, g.holeY, g.holeR);
 
@@ -213,6 +231,33 @@ inline void paintSelection(const Geometry& g, const int firstLine, const int lin
   line(px, x + 8, y0, x, y0, 4);
   line(px, x, y0, x, y1, 4);
   line(px, x, y1, x + 8, y1, 4);
+}
+
+// Pen line above the footer: nearly straight, with a slight natural wobble.
+template <typename Px>
+inline void paintFooterRule(const Geometry& g, Px&& px) {
+  for (int x = g.marginX - 18; x <= g.right; x++) {
+    const double w = 0.8 * std::sin(x / 53.0) + 0.3 * std::sin(x / 17.0);
+    const int y = g.footerRuleY + static_cast<int>(std::lround(w));
+    px(x, y - 1, true);
+    px(x, y, true);
+    px(x, y + 1, true);
+  }
+}
+
+// Eye icon centred on (cx, cy): open = done entries are shown, crossed = they are hidden.
+template <typename Px>
+inline void paintEye(const int cx, const int cy, const bool crossed, Px&& px) {
+  const int a = 14;  // half width
+  const int b = 8;   // half height
+  for (int y = -b - 1; y <= b + 1; y++) {
+    for (int x = -a - 1; x <= a + 1; x++) {
+      const double e = static_cast<double>(x * x) / (a * a) + static_cast<double>(y * y) / (b * b);
+      if (e >= 0.62 && e <= 1.08) px(cx + x, cy + y, true);  // outline, ~3 px
+    }
+  }
+  fillCircle(px, cx, cy, 4);
+  if (crossed) line(px, cx - 15, cy + 11, cx + 15, cy - 11, 4);
 }
 
 }  // namespace listpaper
