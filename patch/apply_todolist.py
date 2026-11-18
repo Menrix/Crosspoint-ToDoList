@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Adds to-do lists to a CrossPoint Reader source tree.
+
+Usage: python3 apply_todolist.py <path-to-crosspoint-reader> [owner/repo]
+
+With owner/repo, the on-device "Check for updates" asks that GitHub repository's latest
+release instead of the official one, so updates keep the lists.
+
+Every change is anchored to a piece of the original code. If CrossPoint changes one of
+those places, the script stops with a clear message instead of building something broken.
+"""
+
+import shutil
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+
+READER_FILES = ("ListCore.h", "ListStore.h", "ListReaderActivity.h", "ListReaderActivity.cpp")
+NETWORK_FILES = ("ListsWeb.h",)
+
+STRINGS = {
+    "english.yaml": {
+        "STR_TODO_OPEN_COUNT": "%d of %d open",
+        "STR_TODO_DONE_HIDDEN": "done hidden",
+        "STR_TODO_EMPTY": "This list is empty",
+        "STR_TODO_ALL_DONE": "All done",
+        "STR_TODO_SAVE_FAILED": "Could not save the list",
+    },
+    "german.yaml": {
+        "STR_TODO_OPEN_COUNT": "%d von %d offen",
+        "STR_TODO_DONE_HIDDEN": "Erledigte ausgeblendet",
+        "STR_TODO_EMPTY": "Diese Liste ist leer",
+        "STR_TODO_ALL_DONE": "Alles erledigt",
+        "STR_TODO_SAVE_FAILED": "Liste konnte nicht gespeichert werden",
+    },
+}
+
+
+def fail(msg: str) -> None:
+    print(f"TODOLIST PATCH FAILED: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def replace_once(text: str, old: str, new: str, what: str) -> str:
+    count = text.count(old)
+    if count != 1:
+        fail(f"'{what}': expected the anchor exactly once, found it {count} times. "
+             f"CrossPoint probably changed this spot; the patch needs an update.")
+    return text.replace(old, new, 1)
+
+
+def main() -> None:
+    if len(sys.argv) not in (2, 3):
+        fail("usage: apply_todolist.py <crosspoint-reader folder> [owner/repo]")
+    root = Path(sys.argv[1])
+    reader_dir = root / "src" / "activities" / "reader"
+    network_dir = root / "src" / "network"
+    reader = reader_dir / "ReaderActivity.cpp"
+    web = network_dir / "CrossPointWebServer.cpp"
+    for f in (reader, web):
+        if not f.is_file():
+            fail(f"{f} not found")
+
+    for name in READER_FILES:
+        shutil.copy(HERE / "files" / name, reader_dir / name)
+    for name in NETWORK_FILES:
+        shutil.copy(HERE / "files" / name, network_dir / name)
+
+    # 1) Files in /Lists open as a list instead of the text reader.
+    src = reader.read_text(encoding="utf-8")
+    if '#include "ListReaderActivity.h"' in src:
+        fail("patch is already applied to this tree")
+    src = replace_once(src, '#include "EpubReaderActivity.h"\n',
+                       '#include "EpubReaderActivity.h"\n#include "ListCore.h"\n#include "ListReaderActivity.h"\n',
+                       "reader include")
+    src = replace_once(src,
+                       "  if (FsHelpers::hasXtcExtension(path)) {\n",
+                       "  if (todolist::isListPath(path)) {  // to-do list (Crosspoint-ToDoList)\n"
+                       "    activity = makeUniqueNoThrow<ListReaderActivity>(renderer, mappedInput, std::move(path),\n"
+                       "                                                     allowFastInitialRefresh);\n"
+                       "  } else if (FsHelpers::hasXtcExtension(path)) {\n",
+                       "open lists")
+    reader.write_text(src, encoding="utf-8")
+
+    # 2) Web addresses for adding entries from a phone or computer.
+    src = web.read_text(encoding="utf-8")
+    src = replace_once(src, '#include "CrossPointWebServer.h"\n',
+                       '#include "CrossPointWebServer.h"\n#include "ListsWeb.h"\n', "web include")
+    src = replace_once(src,
+                       '  server->on("/api/files", HTTP_GET, [this] { handleFileListData(); });\n',
+                       '  server->on("/api/files", HTTP_GET, [this] { handleFileListData(); });\n'
+                       '  // to-do lists (Crosspoint-ToDoList)\n'
+                       '  server->on("/api/lists", HTTP_GET, [this] { todolist::handleListIndex(*server); });\n'
+                       '  server->on("/api/lists/add", HTTP_POST, [this] { todolist::handleListAdd(*server); });\n',
+                       "web routes")
+    web.write_text(src, encoding="utf-8")
+
+    # 3) Texts. Languages without their own entry fall back to English.
+    translations = root / "lib" / "I18n" / "translations"
+    for file_name, entries in STRINGS.items():
+        yaml_file = translations / file_name
+        if not yaml_file.is_file():
+            fail(f"'translations': {file_name} not found")
+        text = yaml_file.read_text(encoding="utf-8")
+        for key, value in entries.items():
+            if f"\n{key}:" in text:
+                fail(f"'translations': {key} already exists in {file_name}")
+            text = text.rstrip("\n") + f'\n{key}: "{value}"\n'
+        yaml_file.write_text(text, encoding="utf-8")
+
+    # 4) On-device updates come from this repository's releases (they include the lists).
+    if len(sys.argv) == 3:
+        repo = sys.argv[2].strip()
+        if repo.count("/") != 1 or not all(part for part in repo.split("/")):
+            fail(f"'{repo}' is not in owner/repo form")
+        ota = network_dir / "OtaUpdater.cpp"
+        ota_src = replace_once(ota.read_text(encoding="utf-8"),
+                               '"https://api.github.com/repos/crosspoint-reader/crosspoint-reader/releases/latest"',
+                               f'"https://api.github.com/repos/{repo}/releases/latest"', "update source")
+        ota.write_text(ota_src, encoding="utf-8")
+    print("To-do list patch applied.")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,145 @@
+# CrossPoint To-Do List
+
+A small add-on for [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader):
+to-do and shopping lists you can tick off on the reader, and add to from your phone or computer
+with the normal **Share** menu.
+
+This repository does not contain a copy of CrossPoint. A GitHub Action takes every new official
+CrossPoint release, adds the lists and publishes the finished firmware under **Releases**.
+
+| Device | File |
+| --- | --- |
+| Xteink X4 Pro | `crosspoint-<version>-x4pro.bin` |
+| Xteink X3 and X4 (one file for both) | `crosspoint-<version>-x3-x4.bin` |
+
+## How it works
+
+Every list is a plain text file in the folder **`/Lists`** on the SD card, one entry per line:
+
+```
+[x] Milk
+[ ] Bread
+[ ] AA batteries, the big pack
+```
+
+`[ ]` is open, `[x]` is done. The tick is stored in the file itself, so any text editor can read
+and write the lists. Lines without `[ ]` count as open entries.
+
+Open a list from the file browser or the library like a book. Other books are not affected.
+
+### X4 Pro (touch screen)
+
+| Action | Result |
+| --- | --- |
+| **Tap the strip on the left** (about 1.5 cm wide, where the boxes are) | Ticks or unticks that entry |
+| Swipe, or tap elsewhere | Turns the page, exactly as set in Settings |
+| **Reader-menu gesture** (center tap or the swipe set in Settings) | Hides or shows done entries for this list |
+
+### X3 and X4 (buttons only)
+
+| Key | Result |
+| --- | --- |
+| **Left / Right** (front) | Moves the frame to the previous / next entry, across pages |
+| **Confirm** | Ticks or unticks the framed entry |
+| **Confirm, hold** | Hides or shows done entries for this list |
+| Side keys | Turn the page |
+
+"Hide done" is remembered per list. Hidden entries stay in the file; show them again to untick one.
+
+To delete a list, delete its file (file browser: hold Confirm; library on touch: swipe the row).
+
+## Add entries from your phone or computer
+
+On the reader, start **File Transfer** (at home in your Wi-Fi, or **Create Hotspot** on the go).
+Then send text to the reader. New entries are always **added** to a list, never replacing it:
+
+- a new entry is appended at the end,
+- an entry that is already open is skipped (no duplicates),
+- an entry that is already done is opened again ("milk" is back on the shopping list).
+
+Upper and lower case do not matter. Empty lines and bullets (`-`, `*`, `•`, `1.`) are removed,
+so text from any notes app works. Up to 32 KB of text per send (about 1,000 short entries).
+
+The reader's address is `http://crosspoint.local`. If your phone cannot find it, use the IP
+address the reader shows on the File Transfer screen instead.
+
+### iPhone, iPad and Mac (Shortcuts app)
+
+Create a shortcut once; it then appears in the **Share** menu of every app.
+
+1. New shortcut, name it **To X4**. In its details turn on **Show in Share Sheet**.
+2. Set it to receive **Text** from the Share Sheet; *If there's no input:* **Ask For** Text.
+3. **Get Contents of URL** `http://crosspoint.local/api/lists`
+4. **Get Dictionary Value** for `lists`, then **Get Dictionary Value** for `name` (gives all list names).
+5. **Add** the text `New list` to that list of names, then **Choose from List**.
+6. **If** the chosen item is `New list`: **Ask for Input** "List name". Otherwise: use the chosen item.
+   Save the result in a variable **List**.
+7. **Get Contents of URL** `http://crosspoint.local/api/lists/add`, Method **POST**,
+   Request Body **Form**: `list` = *List*, `text` = *Shortcut Input*.
+8. **Get Dictionary Value** for `message`, then **Show Notification**.
+
+Use it: select text in Notes (or anywhere) → **Share** → **To X4** → pick the list.
+
+### Android (free app HTTP Shortcuts)
+
+Install [HTTP Shortcuts](https://http-shortcuts.rmy.ch) (Play Store or F-Droid), then:
+
+1. Variables: add **text** (type *Text input*, multi-line, **Allow receiving value from Share dialog** on)
+   and **list** (type *Text input*, or *Select* with your list names).
+2. New shortcut **To X4**: Method **POST**, URL `http://crosspoint.local/api/lists/add`.
+3. Request body: **Form parameters**, `list` = `{list}`, `text` = `{text}`.
+4. Response handling: show as toast.
+
+Use it: select text → **Share** → **To X4**.
+
+### Mac or PC without Shortcuts
+
+- **Finder (WebDAV):** Go → Connect to Server → `http://crosspoint.local`, then save `.txt` files into `/Lists`.
+- **Terminal:** `curl -d "list=Shopping" --data-urlencode "text=Milk" http://crosspoint.local/api/lists/add`
+
+### Web addresses
+
+| Address | What it does |
+| --- | --- |
+| `GET /api/lists` | All lists: `{"lists":[{"name":"Shopping","open":3,"total":5}]}` |
+| `POST /api/lists/add` | Form fields `list` and `text`. Answer: `{"list","added","reopened","skipped","message"}` |
+
+Like all of CrossPoint's File Transfer, these addresses have no password. Use them only in your
+own Wi-Fi or in the reader's own hotspot. They only ever write files in `/Lists`.
+
+## Install
+
+1. Open the latest release and download the file for your device (see the table above).
+2. Install it, either way works:
+   - **SD card:** copy the file to the root of the SD card, then on the reader go to
+     **Settings → SD Card Firmware Update** and pick the file.
+   - **USB:** go to <https://crosspointreader.com/#flash-tools> in Chrome or Edge, choose your device,
+     then **Custom .bin**, and upload the file.
+
+After that, **Settings → Check for Updates** on the reader installs new versions from this
+repository, so updates keep the lists.
+
+## Updates and maintenance
+
+- The Action runs every night. When CrossPoint publishes a new release, a matching release appears here.
+- To build by hand: **Actions → Build CrossPoint with to-do lists → Run workflow**
+  (tick **force** to rebuild a version that already exists).
+- If CrossPoint changes the code the patch hooks into, the build stops with a message that
+  names the spot (`TODOLIST PATCH FAILED: ...`). GitHub sends an email; then
+  `patch/apply_todolist.py` needs an update.
+
+## Files
+
+- `patch/files/ListCore.h`: the list rules (reading, saving, adding, page layout), no hardware code
+- `patch/files/ListStore.h`: reads and writes the list files on the SD card
+- `patch/files/ListReaderActivity.*`: the list screen on the reader
+- `patch/files/ListsWeb.h`: the two web addresses
+- `patch/apply_todolist.py`: adds all of this to a CrossPoint source tree
+- `tests/test_listcore.cpp`: tests for the list rules, run on a PC before every build
+- `.github/workflows/build.yml`: nightly build and release for both devices
+
+Self-built firmware does not include the official release key for CrossPoint's LCP service
+(only relevant for LCP-protected books from that service). Everything else works as in the
+official release.
+
+MIT licensed, like CrossPoint.

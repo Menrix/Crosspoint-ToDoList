@@ -1,0 +1,186 @@
+name: Build CrossPoint with to-do lists
+
+# Runs every night and checks for a new official CrossPoint release.
+# If there is one (and it is not built yet), it adds the to-do lists, builds the firmware for the
+# Xteink X4 Pro and for the X3/X4 and publishes both in one release here.
+# "Run workflow" (Actions tab) starts it by hand; tick "force" to rebuild an existing version.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "CrossPoint version to build (empty = latest release)"
+        required: false
+        default: ""
+      force:
+        description: "Rebuild even if this version already has a release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: todolist-build
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: crosspoint-reader/crosspoint-reader
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.ver.outputs.tag }}
+      version: ${{ steps.ver.outputs.version }}
+      skip: ${{ steps.ver.outputs.skip }}
+    steps:
+      - name: Find CrossPoint version
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WANTED: ${{ inputs.version }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -euo pipefail
+          if [ -n "${WANTED:-}" ]; then
+            tag="$WANTED"
+          else
+            tag="$(gh api "repos/$UPSTREAM/releases/latest" --jq .tag_name)"
+          fi
+          version="${tag#v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [ "${FORCE:-false}" != "true" ]; then
+            echo "CrossPoint $version is already built. Nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Building CrossPoint $version with to-do lists."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.skip == 'false'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false  # one device failing must not block the other
+      matrix:
+        include:
+          - env: x4pro-gh_release
+            device: x4pro
+          - env: gh_release
+            device: x3-x4
+    steps:
+      - name: Get this repository (patch)
+        uses: actions/checkout@v6
+        with:
+          path: todolist
+
+      - name: Test the list logic on the PC
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -Itodolist/patch/files todolist/tests/test_listcore.cpp -o test_listcore
+          ./test_listcore
+
+      - name: Get CrossPoint ${{ needs.check.outputs.version }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.UPSTREAM }}
+          ref: ${{ needs.check.outputs.tag }}
+          submodules: recursive
+          path: crosspoint
+
+      - name: Add the to-do lists
+        run: python3 todolist/patch/apply_todolist.py crosspoint "$GITHUB_REPOSITORY"
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+          enable-cache: false
+
+      # Same tool setup as CrossPoint's own release build.
+      - name: Install PlatformIO
+        run: |
+          uv pip install --system -U https://github.com/pioarduino/platformio-core/archive/refs/tags/v6.1.19.zip
+          uv pip install --system -U "littlefs-python>=0.16.0" "fatfs-ng>=0.1.14" "pyyaml>=6.0.2" \
+            "rich-click>=1.8.6" "zopfli>=0.2.2" "intelhex>=2.3.0" "rich>=14.0.0" "urllib3<2" \
+            "cryptography>=45.0.3" "certifi>=2025.8.3" "ecdsa>=0.19.1" "bitstring>=4.3.1" \
+            "reedsolo>=1.5.3,<1.8" "esp-idf-size>=2.0.0" "esp-coredump>=1.14.0"
+
+      - name: Prepare build tools
+        working-directory: crosspoint
+        run: |
+          set -euo pipefail
+          pio pkg install -e "${{ matrix.env }}"
+          uv pip install --python ~/.platformio/penv/bin/python "pioarduino==6.1.19"
+
+      - name: Build firmware
+        working-directory: crosspoint
+        run: CROSSPOINT_RC_HASH="$(git rev-parse --short=7 HEAD)" pio run -e "${{ matrix.env }}" -j1
+
+      - name: Name the firmware file
+        run: |
+          # The on-device updater looks for exactly this file name.
+          cp "crosspoint/.pio/build/${{ matrix.env }}/firmware.bin" \
+             "crosspoint-${{ needs.check.outputs.version }}-${{ matrix.device }}.bin"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: firmware-${{ matrix.device }}
+          path: crosspoint-${{ needs.check.outputs.version }}-${{ matrix.device }}.bin
+          if-no-files-found: error
+
+  publish:
+    needs: [check, build]
+    # Also publish when only one device built, so its owners still get the update.
+    if: always() && needs.check.outputs.skip == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: firmware-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(dist/crosspoint-*.bin)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No firmware was built. Nothing to publish."
+            exit 1
+          fi
+          notes="CrossPoint ${VERSION} with to-do lists.
+
+          - crosspoint-${VERSION}-x4pro.bin: Xteink X4 Pro
+          - crosspoint-${VERSION}-x3-x4.bin: Xteink X3 and X4 (one file for both)
+
+          Install: copy the file to the SD card root, then Settings -> SD Card Firmware Update.
+          Or: https://crosspointreader.com/#flash-tools -> your device -> Custom .bin
+          Later updates: Settings -> Check for Updates.
+
+          Official changes in this version: https://github.com/${UPSTREAM}/releases/tag/${TAG}"
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$VERSION" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$VERSION" --notes "$notes" --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$VERSION" "${files[@]}" --repo "$GITHUB_REPOSITORY" \
+              --title "CrossPoint ${VERSION} + to-do lists" --notes "$notes" --latest
+          fi
+          # Still report a failed device build (GitHub then sends an email).
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "At least one device build failed; published what was built."
+            exit 1
+          fi
