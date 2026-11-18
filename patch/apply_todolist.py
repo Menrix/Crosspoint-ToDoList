@@ -18,15 +18,18 @@ HERE = Path(__file__).resolve().parent
 
 READER_FILES = ("ListCore.h", "ListStore.h", "ListPaper.h", "ListCover.h", "ListReaderActivity.h",
                 "ListReaderActivity.cpp")
-FONT_FILES = ("patrickhand_14_regular.h", "patrickhand_20_regular.h", "patrickhand_26_regular.h")
+FONT_FILES = ("patrickhand_11_regular.h", "patrickhand_20_regular.h", "patrickhand_26_regular.h")
 NETWORK_FILES = ("ListsWeb.h",)
 
 # All list texts are English (like the rest of the reader's add-on texts).
 STRINGS = {
     "english.yaml": {
-        "STR_TODO_HIDE": "hide",
-        "STR_TODO_SHOW": "show",
-        "STR_TODO_DONE_COUNT": "%d/%d done",
+        "STR_TODO_HINT_SWIPE": "swipe up",
+        "STR_TODO_HINT_TAP": "tap",
+        "STR_TODO_HINT_HERE": "tap here",
+        "STR_TODO_HINT_HOLD": "hold OK",
+        "STR_TODO_HIDE_CHECKED": "to hide checked items",
+        "STR_TODO_SHOW_CHECKED": "to show checked items",
         "STR_TODO_EMPTY": "This list is empty",
         "STR_TODO_ALL_DONE": "All done",
         "STR_TODO_SAVE_FAILED": "Could not save the list",

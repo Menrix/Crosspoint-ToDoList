@@ -65,7 +65,7 @@ inline Geometry geometry(const int width, const int height, const int lineHeight
   g.listTop = g.firstRuleY + 4;
   // Footer: a pen line, then "hide/show  3/9 done  1/2" on one small line.
   g.footerBaseline = height - bottom - 16;
-  g.footerRuleY = g.footerBaseline - std::max(30, lineHeight * 3 / 4) - 8;
+  g.footerRuleY = g.footerBaseline - std::max(26, lineHeight / 2) - 14;
   const int usable = g.footerRuleY - 6 - g.listTop;
   g.lineCount = std::max(1, usable / g.pitch);
   return g;
@@ -245,19 +245,39 @@ inline void paintFooterRule(const Geometry& g, Px&& px) {
   }
 }
 
-// Eye icon centred on (cx, cy): open = done entries are shown, crossed = they are hidden.
+// Eye icon centred on (cx, cy): open = checked lines are shown, closed = they are hidden.
 template <typename Px>
-inline void paintEye(const int cx, const int cy, const bool crossed, Px&& px) {
-  const int a = 14;  // half width
-  const int b = 8;   // half height
-  for (int y = -b - 1; y <= b + 1; y++) {
-    for (int x = -a - 1; x <= a + 1; x++) {
-      const double e = static_cast<double>(x * x) / (a * a) + static_cast<double>(y * y) / (b * b);
-      if (e >= 0.62 && e <= 1.08) px(cx + x, cy + y, true);  // outline, ~3 px
+inline void paintEye(const int cx, const int cy, const bool closed, Px&& px) {
+  const double halfPi = 1.5707963267948966;
+  if (!closed) {
+    // almond outline and a round pupil
+    int lastUp = cy - 0;
+    int lastDown = cy;
+    for (int x = -15; x <= 15; x++) {
+      const double c = std::cos(x / 15.0 * halfPi);
+      const int up = cy - static_cast<int>(std::lround(9 * c));
+      const int down = cy + static_cast<int>(std::lround(8 * c));
+      if (x > -15) {
+        line(px, cx + x - 1, lastUp, cx + x, up, 3);
+        line(px, cx + x - 1, lastDown, cx + x, down, 3);
+      }
+      lastUp = up;
+      lastDown = down;
+    }
+    fillCircle(px, cx, cy, 5);
+  } else {
+    // the closed lid: a curve like a smile, with three short lashes
+    int last = cy;
+    for (int x = -15; x <= 15; x++) {
+      const int y = cy - 2 + static_cast<int>(std::lround(4 * std::cos(x / 15.0 * halfPi)));
+      if (x > -15) line(px, cx + x - 1, last, cx + x, y, 3);
+      last = y;
+    }
+    for (const int lx : {-9, 0, 9}) {
+      const int y0 = cy - 1 + static_cast<int>(std::lround(4 * std::cos(lx / 15.0 * halfPi)));
+      line(px, cx + lx, y0, cx + lx + lx / 4, y0 + 7, 2);
     }
   }
-  fillCircle(px, cx, cy, 4);
-  if (crossed) line(px, cx - 15, cy + 11, cx + 15, cy - 11, 4);
 }
 
 }  // namespace listpaper

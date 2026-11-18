@@ -39,7 +39,7 @@ of every list.
 | --- | --- |
 | **Tap the margin on the left** (left of the margin line, where the boxes are) | Ticks or unticks that entry |
 | Swipe, or tap elsewhere | Turns the page, exactly as set in Settings |
-| **Reader-menu gesture** (center tap or the swipe set in Settings) | Hides or shows done entries for this list |
+| **Reader-menu gesture** (as set in Settings: tap the middle or swipe up) | Hides or shows checked items for this list |
 
 ### X3 and X4 (buttons only)
 
@@ -47,10 +47,13 @@ of every list.
 | --- | --- |
 | **Left / Right** (front) | Moves the marker to the previous / next entry, across pages |
 | **Confirm** | Ticks or unticks the marked entry |
-| **Confirm, hold** | Hides or shows done entries for this list |
+| **Confirm, hold** | Hides or shows checked items for this list |
 | Side keys | Turn the page |
 
-"Hide done" is remembered per list. Hidden entries stay in the file; show them again to untick one.
+The bottom line of every page says how: an open eye with "swipe up to hide checked items"
+(the gesture follows your Settings), or a closed eye with "... to show checked items" while they
+are hidden. With the reader-menu gesture switched off, tapping that line works instead. A Home key
+set to "Reader menu" works too. The choice is remembered per list; hidden items stay in the file.
 
 To delete a list, delete its file (file browser: hold Confirm; library on touch: swipe the row).
 
