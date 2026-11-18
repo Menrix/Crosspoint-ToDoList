@@ -223,6 +223,7 @@ void ListReaderActivity::openKeyboard(const Action action, const int item) {
   if (!keyboard) return;
   // List names are written in capitals (like the headline): the keyboard stays in upper case.
   if (action == Action::NewList || action == Action::Rename) keyboard->setCapsLock();
+  keyboard->hideTips();  // the keyboard's own tips name keys these readers do not all have
   // The result handler runs with the render lock already held: never lock again in here.
   startActivityForResult(std::move(keyboard), [this, action, item](const ActivityResult& result) {
     pagesUntilFullRefresh = 1;  // clean refresh after the keyboard

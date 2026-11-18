@@ -9,6 +9,8 @@ or computer.
 - Looks like a page torn from a spiral notepad, in a handwriting font
 - Tap the box to tick an entry, hide checked entries per list
 - Add, edit and delete entries and lists right on the reader
+- No double entries: an entry that is already on the list is not added again, whatever the
+  upper and lower case (a done one is simply opened again)
 - Lists are plain text files, so any text editor works too
 - On the home screen every list shows as a handwritten notepad page
 

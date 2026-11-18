@@ -157,9 +157,11 @@ def main() -> None:
     src = replace_once(src, "  bool preventAutoSleep() override { return true; }\n",
                        "  bool preventAutoSleep() override { return true; }\n"
                        "  // Start in upper case and stay there (Crosspoint-ToDoList: list names).\n"
-                       "  void setCapsLock() { capsLock = true; }\n", "keyboard caps setter")
+                       "  void setCapsLock() { capsLock = true; }\n"
+                       "  // No tips above the keys (Crosspoint-ToDoList: they name keys the X4 Pro does not have).\n"
+                       "  void hideTips() { tipsHidden = true; }\n", "keyboard caps setter")
     src = replace_once(src, "  bool shifted = false;\n",
-                       "  bool shifted = false;\n  bool capsLock = false;\n", "keyboard caps flag")
+                       "  bool shifted = false;\n  bool capsLock = false;\n  bool tipsHidden = false;\n", "keyboard caps flag")
     kb_h.write_text(src, encoding="utf-8")
     src = kb_cpp.read_text(encoding="utf-8")
     src = replace_once(src, "  shifted = false;\n  symbols = false;\n  urlPanel = false;\n  cursorMode = false;\n",
@@ -168,6 +170,8 @@ def main() -> None:
     src = replace_once(src, "      if (shifted && !symbols) {\n        shifted = false;  // shift auto-releases after one character\n",
                        "      if (shifted && !symbols && !capsLock) {\n        shifted = false;  // shift auto-releases after one character\n",
                        "keyboard keeps caps")
+    src = replace_once(src, "  if (kbRect.y - tipsTop >= tipsHeight) {\n",
+                       "  if (!tipsHidden && kbRect.y - tipsTop >= tipsHeight) {\n", "keyboard tips")
     kb_cpp.write_text(src, encoding="utf-8")
 
     # 4) Texts. Languages without their own entry fall back to English.
