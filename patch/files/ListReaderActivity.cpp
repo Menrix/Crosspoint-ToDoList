@@ -102,7 +102,7 @@ void ListReaderActivity::toggleHideDone() {
   currentPage = 0;
   selected = 0;
   undoPending = false;
-  newSheet();
+  // the sheet keeps its tears: they only change when the reader turns a page
 }
 
 void ListReaderActivity::moveSelection(const int delta) {

@@ -12,10 +12,12 @@
 #include <cstdint>
 #include <vector>
 
+#include "ListPaper.h"
+
 namespace todolist {
 
 constexpr int kCoverW = 300;
-constexpr int kCoverH = 400;
+constexpr int kCoverH = 450;  // 2:3, like a book cover
 
 namespace cover {
 
@@ -44,77 +46,33 @@ struct Canvas {
 
 }  // namespace cover
 
-// The finished BMP file.
+// The finished BMP file: a small notepad page in book-cover proportions (2:3), torn from the
+// spiral like the list pages, with a few ticked and open boxes and pencil scribbles.
 inline std::vector<uint8_t> makeCoverBmp() {
   using cover::Canvas;
   Canvas c;
-  // The note: a square, a soft shadow to the lower right, a curled lower-right corner.
-  const int nx = 30;
-  const int ny = 90;
-  const int ns = 240;
-  for (int y = 0; y < ns + 14; y++) {
-    for (int x = 0; x < ns + 14; x++) {
-      const int sx = x - 8;
-      const int sy = y - 10;
-      const int out = std::max({0, sx - ns, sy - ns});
-      if (sx >= -4 && sy >= -4) c.darken(nx + x, ny + y, 150 + out * 15);  // shadow
-    }
+  const auto px = [&](const int x, const int y, const bool black) { c.set(x, y, black ? 0 : 255); };
+  // Same drawing as a list page, scaled to the cover. No rounded corners: the home screen
+  // draws its own frame around every cover.
+  const auto g = listpaper::geometry(kCoverW, kCoverH, 40, 6, 6, 6, 0);
+  listpaper::paintPaper(g, 0x5EED1234u, px, false);
+  // headline: a thick felt-pen scribble
+  for (int i = 0; i < (g.right - g.textX) * 2 / 3; i++) {
+    const int x = g.textX + i;
+    const int y = g.firstRuleY - 16 + static_cast<int>(4.0 * std::sin(i * 0.21));
+    for (int t = -3; t <= 3; t++) c.darken(x, y + t, 0);
   }
-  for (int y = 0; y < ns; y++) {
-    for (int x = 0; x < ns; x++) {
-      const int fromCorner = (ns - x) + (ns - y);
-      if (fromCorner < 46) continue;                  // cut corner (curled up)
-      int v = 222 - (y * 10) / ns;                    // a faint gradient like light on paper
-      if (fromCorner < 60) v -= (60 - fromCorner);    // shading towards the curl
-      c.set(nx + x, ny + y, v);
-    }
-  }
-  // the curl itself: a lighter triangle folded back over the corner
-  for (int y = 0; y < 46; y++) {
-    for (int x = 0; x < 46; x++) {
-      if (x + y < 46 && x + y > 46 - 46) {
-        const int px = nx + ns - 46 + y;
-        const int py = ny + ns - 46 + x;
-        if (x + y >= 44) {
-          c.set(px, py, 120);
-        } else if (y + x < 44) {
-          c.set(nx + ns - 1 - x, ny + ns - 1 - y, 255);  // background shows where the corner lifted
-          c.set(px, py, 238 - (x + y));
-        }
-      }
-    }
-  }
-  c.stroke(nx + ns - 46, ny + ns, nx + ns, ny + ns - 46, 2, 120);
-  // tape strip across the top, slightly crooked, with torn ends
-  for (int y = 0; y < 36; y++) {
-    for (int x = 0; x < 120; x++) {
-      const int tx = nx + ns / 2 - 60 + x;
-      const int ty = ny - 18 + y + x / 20;
-      const bool edge = (x < 3 + (y * 7) % 4) || (x > 116 - (y * 5) % 4);
-      if (edge) continue;
-      c.set(tx, ty, std::min(c.get(tx, ty) + 25, 246));
-    }
-  }
-  // three checklist rows in pencil: a box (first one ticked) and a wavy line
-  for (int row = 0; row < 3; row++) {
-    const int by = ny + 60 + row * 52;
-    const int bx = nx + 28;
-    const int b = 24;
-    c.stroke(bx, by, bx + b, by + 1, 3, 40);
-    c.stroke(bx + b, by + 1, bx + b - 1, by + b, 3, 40);
-    c.stroke(bx + b - 1, by + b, bx + 1, by + b - 1, 3, 40);
-    c.stroke(bx + 1, by + b - 1, bx, by, 3, 40);
-    if (row == 0) {
-      c.stroke(bx - 3, by - 2, bx + b + 3, by + b + 2, 4, 20);
-      c.stroke(bx + b + 3, by - 3, bx - 2, by + b + 3, 4, 20);
-    }
-    const int len = 130 - row * 25;
-    for (int i = 0; i < len; i++) {
-      const int x = bx + b + 18 + i;
-      const int y = by + b / 2 + static_cast<int>(3.0 * std::sin(i * 0.25 + row));
-      c.darken(x, y, 60);
-      c.darken(x, y + 1, 60);
-      c.darken(x, y + 2, 90);
+  // items: boxes (the first two ticked) and pencil scribbles of different length
+  const int rows = std::min(g.lineCount, 7);
+  for (int i = 0; i < rows; i++) {
+    listpaper::paintBox(g, i, i < 2, i + 3, px);
+    const int len = (g.right - g.textX) * (55 + (i * 37) % 40) / 100;
+    const int base = listpaper::ruleY(g, i) - 12;
+    for (int k = 0; k < len; k++) {
+      const int y = base + static_cast<int>(3.5 * std::sin(k * 0.3 + i));
+      c.darken(g.textX + k, y, 30);
+      c.darken(g.textX + k, y + 1, 30);
+      c.darken(g.textX + k, y + 2, 60);
     }
   }
 

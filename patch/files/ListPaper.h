@@ -139,7 +139,7 @@ inline int wobble(const int seed, const int n) { return ((seed * 7919 + n * 1047
 // seed: which slots are torn open. The reader picks a new random seed whenever a page is shown,
 // and keeps it while that page stays on screen (ticking does not change the tears).
 template <typename Px>
-inline void paintPaper(const Geometry& g, const uint32_t seed, Px&& px) {
+inline void paintPaper(const Geometry& g, const uint32_t seed, Px&& px, const bool roundCorners = true) {
   // Torn-off spiral edge, like a sheet torn from a spiral notepad: dark background on the left,
   // a column of punched slots just inside the paper edge. In an irregular pattern, some slots are
   // torn open towards the edge (the slot runs into the dark), the others are still closed.
@@ -177,7 +177,7 @@ inline void paintPaper(const Geometry& g, const uint32_t seed, Px&& px) {
   }
   // Rounded corners on the right, like a real sheet of paper.
   const int cr = std::max(12, g.width / 24);
-  for (int y = 0; y < cr; y++) {
+  for (int y = 0; roundCorners && y < cr; y++) {
     for (int x = 0; x < cr; x++) {
       const int dx = cr - x;
       const int dy = cr - y;

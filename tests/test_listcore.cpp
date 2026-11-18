@@ -145,7 +145,7 @@ static void testPaperAndCover() {
   });
   CHECK(black > 1000);
   const auto bmp = todolist::makeCoverBmp();
-  CHECK(bmp.size() == 14u + 40u + 1024u + 300u * 400u);
+  CHECK(bmp.size() == 14u + 40u + 1024u + 300u * 450u);
   CHECK(bmp[0] == 'B' && bmp[1] == 'M');
 }
 

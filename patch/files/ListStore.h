@@ -6,6 +6,7 @@
 #include <Logging.h>
 #include <WString.h>
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -67,12 +68,31 @@ inline bool createList(const std::string& name) {
   return Storage.writeFile(path.c_str(), String(""));
 }
 
-// Writes the post-it cover (/Lists/cover.bmp) once, if it is not there yet.
+// The home screen keeps a scaled copy of each cover. After a new cover.bmp, drop those copies
+// for the lists so the home screen makes fresh ones. (Text books keep their cache in
+// "/.crosspoint/epub_<hash of the path>", like EPUBs.)
+inline void clearListThumbs() {
+  for (const String& file : Storage.listFiles(kListsDir, 200)) {
+    const std::string path = std::string(kListsDir) + "/" + file.c_str();
+    if (!isListPath(path)) continue;
+    const std::string dir = "/.crosspoint/epub_" + std::to_string(std::hash<std::string>{}(path));
+    if (!Storage.exists(dir.c_str())) continue;
+    for (const String& cached : Storage.listFiles(dir.c_str(), 50)) {
+      if (cached.startsWith("thumb_")) Storage.remove((dir + "/" + cached.c_str()).c_str());
+    }
+  }
+}
+
+// Writes the notepad cover (/Lists/cover.bmp) if it is missing or from an older version
+// (recognised by its size), so every list shows as a notepad page on the home screen.
 inline void ensureCover() {
   const std::string path = std::string(kListsDir) + "/cover.bmp";
-  if (Storage.exists(path.c_str())) return;
-  Storage.ensureDirectoryExists(kListsDir);
   const std::vector<uint8_t> bmp = makeCoverBmp();
+  if (Storage.exists(path.c_str())) {
+    HalFile existing;
+    if (Storage.openFileForRead("TODO", path, existing) && existing.fileSize() == bmp.size()) return;
+  }
+  Storage.ensureDirectoryExists(kListsDir);
   const std::string tmp = path + ".tmp";
   {
     HalFile f;
@@ -85,7 +105,11 @@ inline void ensureCover() {
       return;
     }
   }
-  if (!Storage.replaceFile(tmp.c_str(), path.c_str())) Storage.remove(tmp.c_str());
+  if (!Storage.replaceFile(tmp.c_str(), path.c_str())) {
+    Storage.remove(tmp.c_str());
+    return;
+  }
+  clearListThumbs();
 }
 
 inline std::vector<std::string> loadHiddenNames() {
