@@ -80,10 +80,7 @@ inline void handleListAdd(WebServer& server) {
       sendJsonError(server, 500, "Could not save the list.");
       return;
     }
-    if (isNew) {
-      ensureCover();                     // post-it cover for the home screen
-      library::markLibraryIndexDirty();  // the new list shows up in the Library too
-    }
+    if (isNew) library::markLibraryIndexDirty();  // the new list shows up in the Library too
   }
 
   char message[160];

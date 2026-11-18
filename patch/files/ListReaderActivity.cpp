@@ -48,7 +48,6 @@ bool ListReaderActivity::loadBook() {
   listName = todolist::nameFromPath(bookPath);
   if (!todolist::loadList(bookPath, items)) return false;
   hideDone = todolist::isDoneHidden(listName);
-  todolist::ensureCover();
   return true;
 }
 

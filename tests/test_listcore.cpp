@@ -144,9 +144,26 @@ static void testPaperAndCover() {
     black += b ? 1 : 0;
   });
   CHECK(black > 1000);
-  const auto bmp = todolist::makeCoverBmp();
-  CHECK(bmp.size() == 14u + 40u + 1024u + 300u * 450u);
-  CHECK(bmp[0] == 'B' && bmp[1] == 'M');
+  // Five covers, each a complete 300x450 1-bit BMP (header 62 bytes + rows of 40 bytes).
+  for (int i = 0; i < kCoverCount; i++) {
+    const CoverImage& c = coverImage(i);
+    CHECK(c.size == 62u + 40u * 450u);
+    CHECK(c.data[0] == 'B' && c.data[1] == 'M');
+    CHECK(c.data[28] == 1);  // bits per pixel
+  }
+  CHECK(coverPath(0) == "/.crosspoint/todolist/cover_1.bmp");
+  // A list keeps its cover whatever the letter case; different lists use different covers.
+  CHECK(coverIndexFor("/Lists/Einkauf.txt") == coverIndexFor("/lists/EINKAUF.TXT"));
+  bool seen[kCoverCount] = {};
+  const char* names[] = {"To do", "Einkauf", "Baumarkt", "Urlaub", "Geschenke", "Arbeit", "Garten", "Ideen"};
+  for (const char* n : names) {
+    const int i = coverIndexFor(pathFor(n));
+    CHECK(i >= 0 && i < kCoverCount);
+    seen[i] = true;
+  }
+  int used = 0;
+  for (const bool s : seen) used += s ? 1 : 0;
+  CHECK(used >= 3);
 }
 
 int main() {

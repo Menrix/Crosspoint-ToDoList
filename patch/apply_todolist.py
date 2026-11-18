@@ -16,8 +16,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-READER_FILES = ("ListCore.h", "ListStore.h", "ListPaper.h", "ListCover.h", "ListReaderActivity.h",
-                "ListReaderActivity.cpp")
+READER_FILES = ("ListPath.h", "ListCore.h", "ListStore.h", "ListPaper.h", "ListCover.h", "ListCoverImages.h",
+                "ListReaderActivity.h", "ListReaderActivity.cpp")
+TXT_FILES = ("ListPath.h",)
 FONT_FILES = ("patrickhand_11_regular.h", "patrickhand_20_regular.h", "patrickhand_26_regular.h")
 NETWORK_FILES = ("ListsWeb.h",)
 
@@ -74,7 +75,9 @@ def main() -> None:
     network_dir = root / "src" / "network"
     reader = reader_dir / "ReaderActivity.cpp"
     web = network_dir / "CrossPointWebServer.cpp"
-    for f in (reader, web):
+    txt_dir = root / "lib" / "Txt"
+    txt = txt_dir / "Txt.cpp"
+    for f in (reader, web, txt):
         if not f.is_file():
             fail(f"{f} not found")
 
@@ -82,6 +85,8 @@ def main() -> None:
         shutil.copy(HERE / "files" / name, reader_dir / name)
     for name in NETWORK_FILES:
         shutil.copy(HERE / "files" / name, network_dir / name)
+    for name in TXT_FILES:
+        shutil.copy(HERE / "files" / name, txt_dir / name)
     fonts_dir = root / "lib" / "EpdFont" / "builtinFonts"
     if not fonts_dir.is_dir():
         fail(f"{fonts_dir} not found")
@@ -123,9 +128,25 @@ def main() -> None:
     src = replace_once(src, '#include "SdCardFontSystem.h"\n',
                        '#include "SdCardFontSystem.h"\n#include "activities/reader/ListStore.h"\n', "main include")
     src = replace_once(src, "  sdFontSystem.begin(renderer);\n",
-                       "  sdFontSystem.begin(renderer);\n  todolist::ensureStarterList();  // Crosspoint-ToDoList\n",
+                       "  sdFontSystem.begin(renderer);\n"
+                       "  todolist::ensureStarterList();  // Crosspoint-ToDoList\n"
+                       "  todolist::ensureCover();\n",
                        "starter list")
     main.write_text(src, encoding="utf-8")
+
+    # 3b) On the home screen every list shows one of the five notepad covers.
+    src = txt.read_text(encoding="utf-8")
+    src = replace_once(src, '#include "TxtToHtml.h"\n',
+                       '#include "ListPath.h"\n#include "TxtToHtml.h"\n', "txt include")
+    src = replace_once(src,
+                       "std::string Txt::findCompanionCoverImage(const std::string& filepath) {\n",
+                       "std::string Txt::findCompanionCoverImage(const std::string& filepath) {\n"
+                       "  if (todolist::isListPath(filepath)) {  // to-do list notepad cover (Crosspoint-ToDoList)\n"
+                       "    const std::string listCover = todolist::coverPath(todolist::coverIndexFor(filepath));\n"
+                       "    if (Storage.exists(listCover.c_str())) return listCover;\n"
+                       "  }\n",
+                       "list covers")
+    txt.write_text(src, encoding="utf-8")
 
     # 4) Texts. Languages without their own entry fall back to English.
     translations = root / "lib" / "I18n" / "translations"

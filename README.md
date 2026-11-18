@@ -29,9 +29,10 @@ Open a list from the file browser or the library like a book. Other books are no
 
 The list looks like a sheet torn from a spiral notepad, written in a handwriting font
 ([Patrick Hand](https://fonts.google.com/specimen/Patrick+Hand), built in, with ä ö ü ß and the usual
-special characters). Every page is torn a little differently. On the home screen, lists show as a
-sticky note: the reader writes one picture, `/Lists/cover.bmp`, that CrossPoint uses as the cover
-of every list.
+special characters). Every page is torn a little differently. On the home screen, every list shows as a
+handwritten notepad page. There are five slightly different pages; each list always gets the same
+one (picked from its name), so lists next to each other look different. The reader keeps the
+pictures in `/.crosspoint/todolist/` and writes them again if they are missing.
 
 ### X4 Pro (touch screen)
 
@@ -142,7 +143,9 @@ repository, so updates keep the lists.
 - `patch/files/ListCore.h`: the list rules (reading, saving, adding, page layout), no hardware code
 - `patch/files/ListStore.h`: reads and writes the list files on the SD card
 - `patch/files/ListPaper.h`: the notepad look (no hardware code; `tools/` draws a PC preview with it)
-- `patch/files/ListCover.h`: the sticky-note cover
+- `patch/files/ListPath.h`: which files are lists and which cover each one gets (also copied to `lib/Txt`)
+- `patch/files/ListCover.h`, `ListCoverImages.h`: the five notepad covers
+- `tools/cover/`: the source picture and the script that makes the covers from it
 - `patch/files/fonts/`: the handwriting font, converted with CrossPoint's own font tool
 - `patch/files/ListReaderActivity.*`: the list screen on the reader
 - `patch/files/ListsWeb.h`: the two web addresses

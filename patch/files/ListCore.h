@@ -16,10 +16,11 @@
 #include <string>
 #include <vector>
 
+#include "ListPath.h"
+
 namespace todolist {
 
-// Folder that holds the lists, and the most text one "add" request may carry.
-constexpr const char* kListsDir = "/Lists";
+// The most text one "add" request may carry. (The lists folder itself is in ListPath.h.)
 constexpr size_t kMaxAddBytes = 32 * 1024;
 // Lists larger than this are not loaded (protects the small X3/X4 memory).
 constexpr size_t kMaxListBytes = 256 * 1024;
@@ -269,26 +270,6 @@ inline std::string sanitizeName(const std::string& raw) {
 }
 
 inline std::string pathFor(const std::string& name) { return std::string(kListsDir) + "/" + name + ".txt"; }
-
-// True for "/Lists/<name>.txt" (folder and extension in any letter case), one level deep.
-inline bool isListPath(const std::string& path) {
-  const std::string dir = std::string(kListsDir) + "/";
-  if (path.size() <= dir.size() + 4) return false;
-  for (size_t i = 0; i < dir.size(); i++) {
-    char a = path[i];
-    char b = dir[i];
-    if (a >= 'A' && a <= 'Z') a = static_cast<char>(a + 32);
-    if (b >= 'A' && b <= 'Z') b = static_cast<char>(b + 32);
-    if (a != b) return false;
-  }
-  const std::string rest = path.substr(dir.size());
-  if (rest.find('/') != std::string::npos) return false;
-  // Hidden files are never lists, e.g. the "._Name.txt" files macOS leaves on SD cards.
-  if (rest[0] == '.') return false;
-  std::string ext = rest.substr(rest.size() - 4);
-  for (char& c : ext) c = static_cast<char>((c >= 'A' && c <= 'Z') ? c + 32 : c);
-  return ext == ".txt";
-}
 
 inline std::string nameFromPath(const std::string& path) {
   const size_t slash = path.find_last_of('/');

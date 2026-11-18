@@ -68,7 +68,7 @@ inline bool createList(const std::string& name) {
   return Storage.writeFile(path.c_str(), String(""));
 }
 
-// The home screen keeps a scaled copy of each cover. After a new cover.bmp, drop those copies
+// The home screen keeps a scaled copy of each cover. After new covers, drop those copies
 // for the lists so the home screen makes fresh ones. (Text books keep their cache in
 // "/.crosspoint/epub_<hash of the path>", like EPUBs.)
 inline void clearListThumbs() {
@@ -83,33 +83,48 @@ inline void clearListThumbs() {
   }
 }
 
-// Writes the notepad cover (/Lists/cover.bmp) if it is missing or from an older version
-// (recognised by its size), so every list shows as a notepad page on the home screen.
-inline void ensureCover() {
-  const std::string path = std::string(kListsDir) + "/cover.bmp";
-  const std::vector<uint8_t> bmp = makeCoverBmp();
-  if (Storage.exists(path.c_str())) {
-    HalFile existing;
-    if (Storage.openFileForRead("TODO", path, existing) && existing.fileSize() == bmp.size()) return;
-  }
-  Storage.ensureDirectoryExists(kListsDir);
+// Writes one picture file in full or not at all (beside the old one, swapped in when complete).
+inline bool writeWholeFile(const std::string& path, const uint8_t* data, const size_t size) {
   const std::string tmp = path + ".tmp";
   {
     HalFile f;
-    if (!Storage.openFileForWrite("TODO", tmp, f)) return;
-    const bool complete = f.write(bmp.data(), bmp.size()) == bmp.size();
+    if (!Storage.openFileForWrite("TODO", tmp, f)) return false;
+    const bool complete = f.write(data, size) == size;
     f.flush();
     if (!complete) {
       f.close();
       Storage.remove(tmp.c_str());
-      return;
+      return false;
     }
   }
   if (!Storage.replaceFile(tmp.c_str(), path.c_str())) {
     Storage.remove(tmp.c_str());
-    return;
+    return false;
   }
-  clearListThumbs();
+  return true;
+}
+
+// Puts the five notepad covers into /.crosspoint/todolist when one is missing or from an older
+// version (recognised by its size). The home screen picks one per list (see ListPath.h).
+// Earlier versions kept a single cover in /Lists/cover.bmp; that file is removed.
+inline void ensureCover() {
+  bool changed = false;
+  const std::string oldCover = std::string(kListsDir) + "/cover.bmp";
+  if (Storage.exists(oldCover.c_str())) {
+    Storage.remove(oldCover.c_str());
+    changed = true;
+  }
+  Storage.ensureDirectoryExists(kCoverDir);
+  for (int i = 0; i < kCoverCount; i++) {
+    const CoverImage& image = coverImage(i);
+    const std::string path = coverPath(i);
+    if (Storage.exists(path.c_str())) {
+      HalFile existing;
+      if (Storage.openFileForRead("TODO", path, existing) && existing.fileSize() == image.size) continue;
+    }
+    if (writeWholeFile(path, image.data, image.size)) changed = true;
+  }
+  if (changed) clearListThumbs();
 }
 
 inline std::vector<std::string> loadHiddenNames() {
