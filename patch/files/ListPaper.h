@@ -236,7 +236,7 @@ inline void paintSelection(const Geometry& g, const int firstLine, const int lin
 // Pen line above the footer: nearly straight, with a slight natural wobble.
 template <typename Px>
 inline void paintFooterRule(const Geometry& g, Px&& px) {
-  for (int x = g.marginX - 18; x <= g.right; x++) {
+  for (int x = g.boxX - 12; x <= g.right; x++) {  // from above the eye to the right edge
     const double w = 0.8 * std::sin(x / 53.0) + 0.3 * std::sin(x / 17.0);
     const int y = g.footerRuleY + static_cast<int>(std::lround(w));
     px(x, y - 1, true);

@@ -68,7 +68,7 @@ sasc, sdesc = small.getmetrics()
 foot_base = 800 - 22                      # baseline of the footer text
 # hand-drawn separator: a slightly wavy pen stroke across the page
 ly = foot_base - sasc - 14
-pts = [(x, ly + 0.8 * math.sin(x / 53.0) + 0.3 * math.sin(x / 17.0)) for x in range(textX - 20, right + 1, 3)]
+pts = [(x, ly + 0.8 * math.sin(x / 53.0) + 0.3 * math.sin(x / 17.0)) for x in range(textX - 14 - 16 - 32 - 12, right + 1, 3)]
 d.line(pts, fill=0, width=3)
 # eye centred on the middle of the lower-case letters
 xb = small.getbbox('x')            # x-height: centre the eye on the lower-case letters
