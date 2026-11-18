@@ -164,8 +164,9 @@ jobs:
           fi
           notes="CrossPoint ${VERSION} with to-do lists.
 
-          - crosspoint-${VERSION}-x4pro.bin: Xteink X4 Pro
-          - crosspoint-${VERSION}-x3-x4.bin: Xteink X3 and X4 (one file for both)
+          - crosspoint-${VERSION}-x4pro.bin: Xteink X4 Pro (tested)
+          - crosspoint-${VERSION}-x3-x4.bin: Xteink X3 and X4 (one file for both) - NOT TESTED on a device.
+            No touch screen there: everything runs over the buttons, which makes the lists harder to use.
 
           Install: copy the file to the SD card root, then Settings -> SD Card Firmware Update.
           Or: https://crosspointreader.com/#flash-tools -> your device -> Custom .bin

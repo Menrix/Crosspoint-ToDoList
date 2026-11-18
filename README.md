@@ -12,6 +12,10 @@ CrossPoint release, adds the lists and publishes the finished firmware under **R
 | Xteink X4 Pro | `crosspoint-<version>-x4pro.bin` |
 | Xteink X3 and X4 (one file for both) | `crosspoint-<version>-x3-x4.bin` |
 
+> **X3 and X4: not tested on a device.** Only the X4 Pro is tested. The X3 and X4 have no touch
+> screen, so everything runs over the few buttons (and their layout differs by setting), which
+> makes the lists harder to use there. Feedback welcome.
+
 ## How it works
 
 Every list is a plain text file in the folder **`/Lists`** on the SD card, one entry per line:
@@ -49,7 +53,7 @@ On the keyboard, `,` or `;` separate entries: `Milk, Bread; Cheese` adds three. 
 the first part replaces the entry and the others are added right below it. Emptying the text
 deletes the entry.
 
-### X3 and X4 (buttons only)
+### X3 and X4 (buttons only, not tested)
 
 | Key | Result |
 | --- | --- |
