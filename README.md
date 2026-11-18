@@ -50,8 +50,8 @@ of every list.
 | **Confirm, hold** | Hides or shows checked items for this list |
 | Side keys | Turn the page |
 
-The bottom line of every page says how: an open eye with "swipe up to hide checked items"
-(the gesture follows your Settings), or a closed eye with "... to show checked items" while they
+The bottom line of every page says how: an open eye with "swipe up to hide checked"
+(the gesture follows your Settings), or a closed eye with "... to show checked" while they
 are hidden. With the reader-menu gesture switched off, tapping that line works instead. A Home key
 set to "Reader menu" works too. The choice is remembered per list; hidden items stay in the file.
 

@@ -87,7 +87,7 @@ else:            # closed eye: the lid as a smile-shaped curve with short lashes
         y0 = ey + 4 * _m.cos(lx / 15 * _m.pi / 2) - 1
         d.line((ex + lx, y0, ex + lx * 1.25, y0 + 7), fill=0, width=2)
 gesture = sys.argv[7] if len(sys.argv) > 7 else "swipe up"
-d.text((textX, foot_base - sasc), f"{gesture} to {'show' if hidden else 'hide'} checked items", font=small, fill=0)
+d.text((textX, foot_base - sasc), f"{gesture} to {'show' if hidden else 'hide'} checked", font=small, fill=0)
 pg = "1/2"
 d.text((right - d.textlength(pg, font=small), foot_base - sasc), pg, font=small, fill=0)
 for (first, lines) in layout:
