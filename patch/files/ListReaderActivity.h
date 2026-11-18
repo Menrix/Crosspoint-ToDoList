@@ -54,7 +54,7 @@ class ListReaderActivity final : public ReaderActivity {
   listpaper::Geometry paper;
   int currentPage = 0;
   int selected = 0;        // entry on the current page (X3/X4 only); -1 = last entry of the page
-  uint32_t paperSeed = 1;  // which spiral holes are torn: new for every page shown
+  uint32_t paperSeed = 1;  // which spiral holes are torn: fixed per list and page
 
   bool loadBook() override;
   std::string getBookTitle() const override { return listName; }

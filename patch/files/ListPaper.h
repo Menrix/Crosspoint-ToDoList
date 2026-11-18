@@ -136,8 +136,8 @@ inline int wobble(const int seed, const int n) { return ((seed * 7919 + n * 1047
 // ---------------------------------------------------------------------------------------------
 
 // The empty page: torn spiral edge, punch hole, margin line, ruled lines.
-// seed: which slots are torn open. The reader picks a new random seed whenever a page is shown,
-// and keeps it while that page stays on screen (ticking does not change the tears).
+// seed: which slots are torn open. The reader derives it from the list name and the page number,
+// so each page always looks the same and every page and list tears differently.
 template <typename Px>
 inline void paintPaper(const Geometry& g, const uint32_t seed, Px&& px, const bool roundCorners = true) {
   // Torn-off spiral edge, like a sheet torn from a spiral notepad: dark background on the left,

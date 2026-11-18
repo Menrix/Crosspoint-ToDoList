@@ -7,7 +7,6 @@
 #include <builtinFonts/patrickhand_11_regular.h>
 #include <builtinFonts/patrickhand_20_regular.h>
 #include <builtinFonts/patrickhand_26_regular.h>
-#include <esp_random.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -50,11 +49,16 @@ bool ListReaderActivity::loadBook() {
   if (!todolist::loadList(bookPath, items)) return false;
   hideDone = todolist::isDoneHidden(listName);
   todolist::ensureCover();
-  newSheet();
   return true;
 }
 
-void ListReaderActivity::newSheet() { paperSeed = esp_random() | 1u; }
+// Every page of a list keeps its own tears: the pattern comes from the list name and the page
+// number, so going back to a page shows the same sheet, and every list tears differently.
+void ListReaderActivity::newSheet() {
+  uint32_t h = 2166136261u;
+  for (const char c : listName) h = (h ^ static_cast<uint8_t>(c)) * 16777619u;
+  paperSeed = (h ^ (static_cast<uint32_t>(currentPage) * 2654435761u)) | 1u;
+}
 
 bool ListReaderActivity::save() {
   if (todolist::saveList(bookPath, items)) return true;
@@ -70,7 +74,6 @@ bool ListReaderActivity::pageTurn(const bool isForward) {
   selected = 0;
   undoPending = false;
   overlay = Overlay::None;
-  newSheet();
   return true;
 }
 
@@ -114,12 +117,10 @@ void ListReaderActivity::moveSelection(const int delta) {
     if (currentPage + 1 >= static_cast<int>(pages.size())) return;  // already on the last entry
     currentPage++;
     sel = 0;
-    newSheet();
   } else if (sel < 0) {
     if (currentPage == 0) return;
     currentPage--;
     sel = -1;  // last entry of the previous page (its size is known after the next layout)
-    newSheet();
   }
   selected = sel;
 }
@@ -526,6 +527,7 @@ void ListReaderActivity::renderBook() {
     const int count = static_cast<int>(pages[currentPage].entries.size());
     if (selected < 0 || selected >= count) selected = count - 1;
   }
+  newSheet();  // tears belong to this page
 
   renderer.clearScreen();
   const auto px = [&](const int x, const int y, const bool black) {
