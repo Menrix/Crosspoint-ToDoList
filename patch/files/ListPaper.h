@@ -48,8 +48,8 @@ inline Geometry geometry(const int width, const int height, const int lineHeight
   Geometry g;
   g.width = width;
   g.height = height;
-  g.paperLeft = left + std::max(34, width / 14);
-  g.marginX = std::max(g.paperLeft + 100, std::min(width * 3 / 10, left + 144));
+  g.paperLeft = left + std::max(12, width / 40);  // thin dark strip: less e-ink ghosting, more room
+  g.marginX = std::max(g.paperLeft + 96, std::min(width * 23 / 100, left + 112));
   g.boxSize = std::clamp(lineHeight * 11 / 20, 18, 34);
   g.boxX = g.marginX - 16 - g.boxSize;
   g.textX = g.marginX + 14;
@@ -145,9 +145,9 @@ inline void paintPaper(const Geometry& g, const uint32_t seed, Px&& px, const bo
   // torn open towards the edge (the slot runs into the dark), the others are still closed.
   fillRect(px, 0, 0, g.paperLeft, g.height);
   const int pitch = std::max(40, g.height / 16);
-  const int slotW = std::max(26, g.paperLeft * 9 / 10);
+  const int slotW = std::max(22, g.width / 20);
   const int slotH = std::max(14, slotW * 5 / 8);
-  const int slotX = g.paperLeft + 6;  // left end of a slot
+  const int slotX = g.paperLeft + 5;  // left end of a slot
   const int r = slotH / 2;
   int index = 0;
   for (int cy = pitch / 2; cy < g.height + slotH; cy += pitch, index++) {

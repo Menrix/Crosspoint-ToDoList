@@ -134,7 +134,7 @@ static void testPaperAndCover() {
   // tick margin (everything left of marginX) wide enough for a finger.
   const auto g = listpaper::geometry(480, 800, 58, 0, 0, 0, 0);
   CHECK(g.lineCount >= 8);
-  CHECK(g.marginX >= 120 && g.marginX < 200);
+  CHECK(g.marginX >= 100 && g.marginX < 200);  // tick margin: about 1.2 cm or more
   CHECK(g.boxX > g.paperLeft + 30);
   CHECK(g.textX > g.marginX);
   CHECK(listpaper::ruleY(g, g.lineCount - 1) < 800);
