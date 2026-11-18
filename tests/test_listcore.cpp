@@ -58,6 +58,11 @@ static void testMerge() {
   CHECK(r2.skipped == 1 && r2.added == 1);
   CHECK(items[1].text == "Birnen" && !items[1].done);
 
+  // Typed on the reader: commas separate items.
+  items = parse("");
+  CHECK(merge(items, commasToLines("Milch, Brot ,Käse,, ")).added == 3);
+  CHECK(serialize(items) == "[ ] Milch\n[ ] Brot\n[ ] Käse\n");
+
   // Extra spaces inside an entry do not make a new one.
   items = parse("[ ] Batterien AA\n");
   CHECK(merge(items, "Batterien   AA").skipped == 1);

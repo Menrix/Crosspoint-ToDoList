@@ -230,6 +230,16 @@ inline AddResult merge(std::vector<Item>& items, const std::string& incoming) {
   return result;
 }
 
+// Text typed on the reader's keyboard (one line only): commas separate the items.
+// "Milk, Bread , Cheese" -> "Milk\nBread\nCheese". merge() then cleans every part as usual.
+inline std::string commasToLines(const std::string& typed) {
+  std::string out = typed;
+  for (char& c : out) {
+    if (c == ',') c = '\n';
+  }
+  return out;
+}
+
 // List name -> safe file name part (without ".txt"). Empty result = not usable.
 inline std::string sanitizeName(const std::string& raw) {
   std::string out;

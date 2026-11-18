@@ -30,8 +30,24 @@ STRINGS = {
         "STR_TODO_HINT_HOLD": "hold OK",
         "STR_TODO_HIDE_CHECKED": "to hide checked",
         "STR_TODO_SHOW_CHECKED": "to show checked",
-        "STR_TODO_EMPTY": "This list is empty",
+        "STR_TODO_EMPTY_TOUCH": "tap a line to write",
+        "STR_TODO_EMPTY_KEYS": "press OK to write",
         "STR_TODO_ALL_DONE": "All done",
+        "STR_TODO_EDIT": "edit",
+        "STR_TODO_DELETE": "delete",
+        "STR_TODO_NEW_LIST": "new list",
+        "STR_TODO_RENAME": "rename list",
+        "STR_TODO_ADD_ITEMS": "add items",
+        "STR_TODO_UNDO": "undo delete",
+        "STR_TODO_TO_UNDO": "to undo",
+        "STR_TODO_MENU_HIDE": "hide checked",
+        "STR_TODO_MENU_SHOW": "show checked",
+        "STR_TODO_KB_ADD": "New items (commas separate them)",
+        "STR_TODO_KB_EDIT": "Edit item (empty = delete)",
+        "STR_TODO_KB_NEW": "Name of the new list",
+        "STR_TODO_KB_RENAME": "New name for this list",
+        "STR_TODO_NAME_INVALID": "Not a usable list name",
+        "STR_TODO_NAME_TAKEN": "A list with this name exists",
         "STR_TODO_SAVE_FAILED": "Could not save the list",
     },
 }
@@ -101,7 +117,17 @@ def main() -> None:
                        "web routes")
     web.write_text(src, encoding="utf-8")
 
-    # 3) Texts. Languages without their own entry fall back to English.
+    # 3) First start: an empty "To do" list in /Lists, so there is always one to open.
+    main = root / "src" / "main.cpp"
+    src = main.read_text(encoding="utf-8")
+    src = replace_once(src, '#include "SdCardFontSystem.h"\n',
+                       '#include "SdCardFontSystem.h"\n#include "activities/reader/ListStore.h"\n', "main include")
+    src = replace_once(src, "  sdFontSystem.begin(renderer);\n",
+                       "  sdFontSystem.begin(renderer);\n  todolist::ensureStarterList();  // Crosspoint-ToDoList\n",
+                       "starter list")
+    main.write_text(src, encoding="utf-8")
+
+    # 4) Texts. Languages without their own entry fall back to English.
     translations = root / "lib" / "I18n" / "translations"
     for file_name, entries in STRINGS.items():
         yaml_file = translations / file_name
@@ -114,7 +140,7 @@ def main() -> None:
             text = text.rstrip("\n") + f'\n{key}: "{value}"\n'
         yaml_file.write_text(text, encoding="utf-8")
 
-    # 4) On-device updates come from this repository's releases (they include the lists).
+    # 5) On-device updates come from this repository's releases (they include the lists).
     if len(sys.argv) == 3:
         repo = sys.argv[2].strip()
         if repo.count("/") != 1 or not all(part for part in repo.split("/")):

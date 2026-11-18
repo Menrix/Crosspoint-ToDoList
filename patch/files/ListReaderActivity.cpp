@@ -12,15 +12,19 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <utility>
 
 #include "CrossPointSettings.h"
 #include "HapticFeedback.h"
 #include "ListStore.h"
 #include "ReaderUtils.h"
+#include "RecentBooksStore.h"
+#include "activities/util/KeyboardEntryActivity.h"
 #include "fontIds.h"
 
 namespace {
-constexpr unsigned long kMenuHoldMs = 700;  // X3/X4: Confirm held this long = show/hide done
+constexpr unsigned long kMenuHoldMs = 700;  // X3/X4: Confirm held this long opens the menu
+constexpr size_t kMaxTyped = 400;           // keyboard input, bytes
 
 // Handwriting (Patrick Hand, SIL Open Font License), built into the firmware for the lists only.
 constexpr int kListFontId = 0x4C495354;   // "LIST"
@@ -52,24 +56,44 @@ bool ListReaderActivity::loadBook() {
 
 void ListReaderActivity::newSheet() { paperSeed = esp_random() | 1u; }
 
+bool ListReaderActivity::save() {
+  if (todolist::saveList(bookPath, items)) return true;
+  message = tr(STR_TODO_SAVE_FAILED);
+  return false;
+}
+
 bool ListReaderActivity::pageTurn(const bool isForward) {
   RenderLock lock(*this);
   const int last = static_cast<int>(pages.size()) - 1;
   if (isForward ? currentPage >= last : currentPage <= 0) return false;
   currentPage += isForward ? 1 : -1;
   selected = 0;
+  undoPending = false;
+  overlay = Overlay::None;
   newSheet();
   return true;
 }
 
-void ListReaderActivity::toggleEntry(const int pageEntry) {
-  if (currentPage < 0 || currentPage >= static_cast<int>(pages.size())) return;
+int ListReaderActivity::itemOfEntry(const int pageEntry) const {
+  if (currentPage < 0 || currentPage >= static_cast<int>(pages.size())) return -1;
   const auto& entries = pages[currentPage].entries;
-  if (pageEntry < 0 || pageEntry >= static_cast<int>(entries.size())) return;
-  auto& item = items[entries[pageEntry].item];
-  item.done = !item.done;
-  saveFailed = !todolist::saveList(bookPath, items);
-  if (saveFailed) item.done = !item.done;  // the screen must always show what is on the card
+  if (pageEntry < 0 || pageEntry >= static_cast<int>(entries.size())) return -1;
+  return entries[pageEntry].item;
+}
+
+int ListReaderActivity::selectedEntry() const {
+  if (currentPage >= static_cast<int>(pages.size())) return -1;
+  const int count = static_cast<int>(pages[currentPage].entries.size());
+  return selected < 0 ? count - 1 : std::min(selected, count - 1);
+}
+
+void ListReaderActivity::toggleEntry(const int pageEntry) {
+  const int index = itemOfEntry(pageEntry);
+  if (index < 0) return;
+  items[index].done = !items[index].done;
+  undoPending = false;
+  message = nullptr;
+  if (!save()) items[index].done = !items[index].done;  // the screen always shows what is on the card
 }
 
 void ListReaderActivity::toggleHideDone() {
@@ -77,6 +101,7 @@ void ListReaderActivity::toggleHideDone() {
   todolist::setDoneHidden(listName, hideDone);
   currentPage = 0;
   selected = 0;
+  undoPending = false;
   newSheet();
 }
 
@@ -99,37 +124,248 @@ void ListReaderActivity::moveSelection(const int delta) {
   selected = sel;
 }
 
-void ListReaderActivity::loop() {
-  rememberBookOnceRendered();
-  if (handleBackNavigation()) return;
+// Runs a button or menu action. Called with the render lock held.
+void ListReaderActivity::runAction(const Action action, const int pageEntry) {
+  overlay = Overlay::None;
+  message = nullptr;
+  const int index = itemOfEntry(pageEntry);
+  switch (action) {
+    case Action::Delete:
+      if (index < 0) break;
+      undoItem = items[index];
+      undoIndex = index;
+      items.erase(items.begin() + index);
+      if (save()) {
+        undoPending = true;
+      } else {
+        items.insert(items.begin() + index, undoItem);
+      }
+      break;
+    case Action::Undo: {
+      if (!undoPending) break;
+      const int at = std::min(undoIndex, static_cast<int>(items.size()));
+      items.insert(items.begin() + at, undoItem);
+      if (!save()) items.erase(items.begin() + at);
+      undoPending = false;
+      break;
+    }
+    case Action::ToggleHide:
+      toggleHideDone();
+      break;
+    case Action::Edit:
+      if (index >= 0) openKeyboard(Action::Edit, index);
+      break;
+    case Action::Add:
+    case Action::NewList:
+    case Action::Rename:
+      openKeyboard(action, -1);
+      break;
+    case Action::None:
+      break;
+  }
+}
 
-  const bool touch = mappedInput.hasTouch();
+void ListReaderActivity::openKeyboard(const Action action, const int item) {
+  std::string title;
+  std::string text;
+  switch (action) {
+    case Action::Add:
+      title = tr(STR_TODO_KB_ADD);
+      break;
+    case Action::Edit:
+      title = tr(STR_TODO_KB_EDIT);
+      text = items[item].text;
+      break;
+    case Action::NewList:
+      title = tr(STR_TODO_KB_NEW);
+      break;
+    case Action::Rename:
+      title = tr(STR_TODO_KB_RENAME);
+      text = listName;
+      break;
+    default:
+      return;
+  }
+  undoPending = false;
+  auto keyboard = makeUniqueNoThrow<KeyboardEntryActivity>(renderer, mappedInput, title, text, kMaxTyped);
+  if (!keyboard) return;
+  // The result handler runs with the render lock already held: never lock again in here.
+  startActivityForResult(std::move(keyboard), [this, action, item](const ActivityResult& result) {
+    pagesUntilFullRefresh = 1;  // clean refresh after the keyboard
+    if (result.isCancelled) return;
+    const std::string typed = std::get<KeyboardResult>(result.data).text;
+    switch (action) {
+      case Action::Add: {
+        todolist::merge(items, todolist::commasToLines(typed));
+        save();
+        currentPage = 1 << 20;  // show the last page, where the new items are (clamped on render)
+        break;
+      }
+      case Action::Edit: {
+        if (item < 0 || item >= static_cast<int>(items.size())) break;
+        todolist::Item edited;
+        if (!todolist::parseLine(typed, edited)) {  // emptied: that is a delete
+          undoItem = items[item];
+          undoIndex = item;
+          items.erase(items.begin() + item);
+          undoPending = save();
+          if (!undoPending) items.insert(items.begin() + item, undoItem);
+          break;
+        }
+        const todolist::Item before = items[item];
+        items[item].text = edited.text;
+        if (!save()) items[item] = before;
+        break;
+      }
+      case Action::NewList: {
+        const std::string name = todolist::sanitizeName(typed);
+        if (name.empty() || !todolist::createList(name)) {
+          message = tr(STR_TODO_NAME_INVALID);
+          break;
+        }
+        activityManager.goToReader(todolist::pathFor(name));
+        break;
+      }
+      case Action::Rename: {
+        const std::string name = todolist::sanitizeName(typed);
+        if (name.empty() || name == listName) break;
+        if (!todolist::renameList(listName, name)) {
+          message = tr(STR_TODO_NAME_TAKEN);
+          break;
+        }
+        RECENT_BOOKS.removeByPath(bookPath);
+        activityManager.goToReader(todolist::pathFor(name));
+        break;
+      }
+      default:
+        break;
+    }
+  });
+}
 
+// Overlay taps (touch) and menu keys (X3/X4). Returns true when the input was used.
+bool ListReaderActivity::handleOverlayInput(const bool touch) {
+  if (overlay == Overlay::None) return false;
   if (touch) {
-    // A tap in the margin ticks. Checked first, so the same tap cannot also turn the page.
     int x = 0;
     int y = 0;
-    if (mappedInput.wasScreenTapped(x, y) && x < paper.marginX) {
-      bool changed = false;
+    if (!mappedInput.wasScreenTapped(x, y)) {
+      // a swipe or the back key just closes the buttons
+      if (mappedInput.wasSwipe() != MappedInputManager::SwipeDir::None ||
+          mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+        RenderLock lock(*this);
+        overlay = Overlay::None;
+        requestUpdate();
+        return true;
+      }
+      return false;
+    }
+    {
+      RenderLock lock(*this);
+      Action hit = Action::None;
+      for (const auto& b : buttons) {
+        if (x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h) hit = b.action;
+      }
+      if (hit == Action::None) {
+        overlay = Overlay::None;  // tap elsewhere: close without doing anything
+      } else {
+        runAction(hit, overlayEntry);
+      }
+    }
+    haptic_feedback::touchAction();
+    requestUpdate();
+    return true;
+  }
+
+  // X3/X4 menu
+  const bool swap = mappedInput.isNavDirectionSwapped();
+  const bool next =
+      mappedInput.wasPressed(swap ? MappedInputManager::Button::Left : MappedInputManager::Button::Right) ||
+      mappedInput.wasPressed(MappedInputManager::Button::PageForward);
+  const bool prev =
+      mappedInput.wasPressed(swap ? MappedInputManager::Button::Right : MappedInputManager::Button::Left) ||
+      mappedInput.wasPressed(MappedInputManager::Button::PageBack);
+  const bool back = mappedInput.wasReleased(MappedInputManager::Button::Back);
+  const bool confirm = mappedInput.wasReleased(MappedInputManager::Button::Confirm);
+  if (!next && !prev && !back && !confirm) return true;  // the menu owns the keys while it is open
+  {
+    RenderLock lock(*this);
+    const int count = static_cast<int>(buttons.size());
+    if (back) {
+      overlay = Overlay::None;
+    } else if (confirm) {
+      if (menuSelected >= 0 && menuSelected < count) runAction(buttons[menuSelected].action, selectedEntry());
+    } else if (count > 0) {
+      menuSelected = (menuSelected + (next ? 1 : count - 1)) % count;
+    }
+  }
+  requestUpdate();
+  return true;
+}
+
+void ListReaderActivity::loop() {
+  rememberBookOnceRendered();
+  const bool touch = mappedInput.hasTouch();
+  if (handleOverlayInput(touch)) return;
+  if (handleBackNavigation()) return;
+
+  if (touch) {
+    int x = 0;
+    int y = 0;
+    // Long press: buttons for the item (edit / delete) or for the headline (new list / rename).
+    if (mappedInput.wasScreenLongPress(x, y)) {
+      bool opened = false;
       {
         RenderLock lock(*this);
-        if (currentPage < static_cast<int>(pages.size())) {
+        if (y < paper.firstRuleY) {
+          overlay = Overlay::Title;
+        } else if (currentPage < static_cast<int>(pages.size()) && y < paper.footerRuleY) {
           const int hit = todolist::entryAt(pages[currentPage], y - paper.listTop, 0);
           if (hit >= 0) {
-            toggleEntry(hit);
-            changed = true;
+            overlay = Overlay::Item;
+            overlayEntry = hit;
           }
         }
+        opened = overlay != Overlay::None;
       }
-      if (changed) {
-        haptic_feedback::touchAction();
+      if (opened) {
+        haptic_feedback::touchAction(true);
         requestUpdate();
       }
       return;
     }
-    const bool footerTap = SETTINGS.showReaderMenu == CrossPointSettings::READER_MENU_OFF &&
-                           mappedInput.wasScreenTapped(x, y) && y >= paper.footerRuleY - 10;
-    if (footerTap || ReaderUtils::isTouchMenuGesture(renderer, mappedInput) ||
+    if (mappedInput.wasScreenTapped(x, y)) {
+      bool used = false;
+      {
+        RenderLock lock(*this);
+        const bool inList = y >= paper.listTop && y < paper.footerRuleY - 6;
+        const int hit = currentPage < static_cast<int>(pages.size())
+                            ? todolist::entryAt(pages[currentPage], y - paper.listTop, 0)
+                            : -1;
+        if (inList && x < paper.marginX) {
+          if (hit >= 0) toggleEntry(hit);  // box column: tick
+          used = true;
+        } else if (inList && hit < 0) {
+          runAction(Action::Add, -1);  // an empty line: write new items there
+          used = true;
+        } else if (y >= paper.footerRuleY - 10) {
+          // footer: undo, or hide/show when no menu gesture is set
+          if (undoPending) {
+            runAction(Action::Undo, -1);
+            used = true;
+          } else if (SETTINGS.showReaderMenu == CrossPointSettings::READER_MENU_OFF) {
+            toggleHideDone();
+            used = true;
+          }
+        }
+      }
+      if (used) {
+        haptic_feedback::touchAction();
+        requestUpdate();
+        return;
+      }
+    }
+    if (ReaderUtils::isTouchMenuGesture(renderer, mappedInput) ||
         mappedInput.homeButtonAction() == HomeButtonAction::ReaderMenu) {
       {
         RenderLock lock(*this);
@@ -140,11 +376,12 @@ void ListReaderActivity::loop() {
       return;
     }
   } else {
-    // X3/X4: Confirm held = show/hide done, Confirm short = tick, Left/Right = select.
+    // X3/X4: Confirm held = menu, Confirm short = tick, Left/Right = select.
     if (mappedInput.wasLongPressed(MappedInputManager::Button::Confirm, kMenuHoldMs)) {
       {
         RenderLock lock(*this);
-        toggleHideDone();
+        overlay = Overlay::Menu;
+        menuSelected = 0;
       }
       requestUpdate();
       return;
@@ -152,9 +389,10 @@ void ListReaderActivity::loop() {
     if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
       {
         RenderLock lock(*this);
-        if (currentPage < static_cast<int>(pages.size())) {
-          const int count = static_cast<int>(pages[currentPage].entries.size());
-          toggleEntry(selected < 0 ? count - 1 : std::min(selected, count - 1));
+        if (pages.empty()) {
+          runAction(Action::Add, -1);  // empty list: Confirm writes the first items
+        } else {
+          toggleEntry(selectedEntry());
         }
       }
       requestUpdate();
@@ -180,7 +418,7 @@ void ListReaderActivity::loop() {
   bool prev = touchTurn.prev;
   bool next = touchTurn.next;
   if (!touch) {
-    // On X3/X4 the front Left/Right keys select entries, so only the side keys turn pages.
+    // On X3/X4 the front Left/Right keys select items, so only the side keys turn pages.
     prev = prev || mappedInput.wasPressed(MappedInputManager::Button::PageBack);
     next = next || mappedInput.wasPressed(MappedInputManager::Button::PageForward) ||
            (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
@@ -197,6 +435,73 @@ void ListReaderActivity::loop() {
   if (changed) requestUpdate();
 }
 
+// Buttons for an item or the headline (touch), or the menu (keys). Called from renderBook().
+void ListReaderActivity::drawOverlay(const bool touch) {
+  buttons.clear();
+  if (overlay == Overlay::None) return;
+  const int smallAscender = renderer.getFontAscenderSize(kSmallFontId);
+  const int smallLine = renderer.getLineHeight(kSmallFontId);
+
+  // A black pill with white handwriting (selected / touch), or an outlined one (menu rows).
+  const auto pill = [&](const int x, const int y, const int w, const int h, const char* text, const Action action,
+                        const bool filled) {
+    renderer.fillRect(x - 3, y - 3, w + 6, h + 6, false);  // white rim, so it stands out on the lines
+    const int textX = x + (w - renderer.getTextWidth(kSmallFontId, text)) / 2;
+    const int textY = y + (h - smallAscender) / 2 - 1;
+    if (filled) {
+      renderer.fillRoundedRect(x, y, w, h, h / 2, Color::Black);
+      renderer.drawText(kSmallFontId, textX, textY, text, false);
+    } else {
+      renderer.drawRoundedRect(x, y, w, h, 2, h / 2, true);
+      renderer.drawText(kSmallFontId, textX, textY, text, true);
+    }
+    buttons.push_back(Button{x, y, w, h, action});
+  };
+
+  if (touch && (overlay == Overlay::Item || overlay == Overlay::Title)) {
+    const bool item = overlay == Overlay::Item;
+    const char* first = item ? tr(STR_TODO_EDIT) : tr(STR_TODO_NEW_LIST);
+    const char* second = item ? tr(STR_TODO_DELETE) : tr(STR_TODO_RENAME);
+    const int h = std::max(smallLine + 14, paper.pitch - 18);
+    const int w1 = renderer.getTextWidth(kSmallFontId, first) + 36;
+    const int w2 = renderer.getTextWidth(kSmallFontId, second) + 36;
+    int y = paper.firstRuleY - h - 6;  // headline row
+    if (item && currentPage < static_cast<int>(pages.size()) &&
+        overlayEntry < static_cast<int>(pages[currentPage].entries.size())) {
+      const int line = pages[currentPage].entries[overlayEntry].top / paper.pitch;
+      y = listpaper::ruleY(paper, line) - h - 2;
+    }
+    const int x2 = paper.right - w2;
+    const int x1 = x2 - 14 - w1;
+    pill(x1, y, w1, h, first, item ? Action::Edit : Action::NewList, true);
+    pill(x2, y, w2, h, second, item ? Action::Delete : Action::Rename, true);
+    return;
+  }
+
+  // X3/X4 menu: a white card in the middle with one row per action.
+  std::vector<std::pair<const char*, Action>> rows;
+  if (undoPending) rows.emplace_back(tr(STR_TODO_UNDO), Action::Undo);
+  rows.emplace_back(tr(STR_TODO_ADD_ITEMS), Action::Add);
+  if (!pages.empty()) {
+    rows.emplace_back(tr(STR_TODO_EDIT), Action::Edit);
+    rows.emplace_back(tr(STR_TODO_DELETE), Action::Delete);
+  }
+  rows.emplace_back(hideDone ? tr(STR_TODO_MENU_SHOW) : tr(STR_TODO_MENU_HIDE), Action::ToggleHide);
+  rows.emplace_back(tr(STR_TODO_NEW_LIST), Action::NewList);
+  rows.emplace_back(tr(STR_TODO_RENAME), Action::Rename);
+  const int rowH = smallLine + 18;
+  const int cardW = std::min(renderer.getScreenWidth() - 60, 300);
+  const int cardH = static_cast<int>(rows.size()) * (rowH + 8) + 24;
+  const int cx = (renderer.getScreenWidth() - cardW) / 2;
+  const int cy = (renderer.getScreenHeight() - cardH) / 2;
+  renderer.fillRect(cx, cy, cardW, cardH, false);
+  renderer.drawRoundedRect(cx, cy, cardW, cardH, 3, 14, true);
+  if (menuSelected >= static_cast<int>(rows.size())) menuSelected = 0;
+  for (int i = 0; i < static_cast<int>(rows.size()); i++) {
+    pill(cx + 16, cy + 12 + i * (rowH + 8), cardW - 32, rowH, rows[i].first, rows[i].second, i == menuSelected);
+  }
+}
+
 void ListReaderActivity::renderBook() {
   const bool touch = mappedInput.hasTouch();
   int top = 0;
@@ -211,7 +516,7 @@ void ListReaderActivity::renderBook() {
   paper = listpaper::geometry(width, height, lineHeight, top, right, bottom, left);
   const int textWidth = std::max(40, paper.right - paper.textX);
 
-  // Entries sit on the ruled lines: one text line = one ruled line, no extra gaps.
+  // Items sit on the ruled lines: one text line = one ruled line, no extra gaps.
   const todolist::WrapFn wrap = [&](const std::string& text, const int maxLines) {
     return renderer.wrappedText(kListFontId, text.c_str(), textWidth, maxLines);
   };
@@ -243,8 +548,9 @@ void ListReaderActivity::renderBook() {
     renderer.drawText(headFont, paper.textX + ox, titleBaseline - headAscender, headline.c_str(), true);
   }
 
-  // Footer, under a pen line: an eye in the box column (open = checked lines shown, closed =
-  // hidden), a hint that names the gesture set in Settings, and the page ("1/1" too).
+  // Footer, under a pen line: an eye in the box column (open = checked items shown, closed =
+  // hidden) and a hint that names the gesture set in Settings; or "undo" right after a delete;
+  // and the page ("1/1" too).
   listpaper::paintFooterRule(paper, px);
   const int smallAscender = renderer.getFontAscenderSize(kSmallFontId);
   const int footY = paper.footerBaseline - smallAscender;
@@ -252,9 +558,14 @@ void ListReaderActivity::renderBook() {
   snprintf(page, sizeof(page), "%d/%d", currentPage + 1, std::max(1, static_cast<int>(pages.size())));
   const int pageW = renderer.getTextWidth(kSmallFontId, page);
   renderer.drawText(kSmallFontId, paper.right - pageW, footY, page, true);
+  const int hintWidth = std::max(40, paper.right - pageW - 16 - paper.textX);
   const int doneCount = static_cast<int>(items.size()) - todolist::countOpen(items);
-  if (saveFailed) {
-    renderer.drawText(kSmallFontId, paper.textX, footY, tr(STR_TODO_SAVE_FAILED), true);
+  char hint[96] = "";
+  if (message != nullptr) {
+    snprintf(hint, sizeof(hint), "%s", message);
+  } else if (undoPending) {
+    snprintf(hint, sizeof(hint), "%s %s", touch ? tr(STR_TODO_HINT_HERE) : tr(STR_TODO_HINT_HOLD),
+             tr(STR_TODO_TO_UNDO));
   } else if (doneCount > 0) {
     const int xHeight = std::max(6, smallAscender * 7 / 16);  // eye on the middle of the lower-case letters
     listpaper::paintEye(paper.boxX + paper.boxSize / 2, paper.footerBaseline - xHeight / 2, hideDone, px);
@@ -272,21 +583,24 @@ void ListReaderActivity::renderBook() {
           break;
       }
     }
-    char hint[96];
     snprintf(hint, sizeof(hint), "%s %s", gesture, hideDone ? tr(STR_TODO_SHOW_CHECKED) : tr(STR_TODO_HIDE_CHECKED));
-    const std::string fitted = renderer.truncatedText(kSmallFontId, hint, std::max(40, paper.right - pageW - 16 - paper.textX));
-    renderer.drawText(kSmallFontId, paper.textX, footY, fitted.c_str(), true);
+  }
+  if (hint[0] != '\0') {
+    renderer.drawText(kSmallFontId, paper.textX, footY, renderer.truncatedText(kSmallFontId, hint, hintWidth).c_str(),
+                      true);
   }
 
-  // Entries: box in the margin on the entry's first line, text on the ruled lines.
+  // Items: box in the margin on the item's first line, text on the ruled lines.
   const int ascender = renderer.getFontAscenderSize(kListFontId);
   if (pages.empty()) {
-    const char* msg = items.empty() ? tr(STR_TODO_EMPTY) : tr(STR_TODO_ALL_DONE);
-    renderer.drawText(kListFontId, paper.textX, listpaper::ruleY(paper, 0) - 4 - ascender, msg, true);
+    const char* msg =
+        items.empty() ? (touch ? tr(STR_TODO_EMPTY_TOUCH) : tr(STR_TODO_EMPTY_KEYS)) : tr(STR_TODO_ALL_DONE);
+    renderer.drawText(kListFontId, paper.textX, listpaper::ruleY(paper, 0) - 4 - ascender,
+                      renderer.truncatedText(kListFontId, msg, textWidth).c_str(), true);
   } else {
-    const auto& page = pages[currentPage];
-    for (int i = 0; i < static_cast<int>(page.entries.size()); i++) {
-      const auto& entry = page.entries[i];
+    const auto& pageData = pages[currentPage];
+    for (int i = 0; i < static_cast<int>(pageData.entries.size()); i++) {
+      const auto& entry = pageData.entries[i];
       const int firstLine = entry.top / paper.pitch;
       listpaper::paintBox(paper, firstLine, items[entry.item].done, entry.item + 1, px);
       for (int l = 0; l < static_cast<int>(entry.lines.size()); l++) {
@@ -299,6 +613,7 @@ void ListReaderActivity::renderBook() {
     }
   }
 
+  drawOverlay(touch);
   ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh);
   markPageRendered();
 }

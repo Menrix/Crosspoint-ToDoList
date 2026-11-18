@@ -50,6 +50,23 @@ inline bool saveList(const std::string& path, const std::vector<Item>& items) {
   return true;
 }
 
+// First start: no /Lists folder yet -> create it with an empty "To do" list, so there is always
+// a list to open and start writing in on the reader itself.
+inline void ensureStarterList() {
+  if (Storage.exists(kListsDir)) return;
+  Storage.ensureDirectoryExists(kListsDir);
+  Storage.writeFile(pathFor("To do").c_str(), String(""));
+}
+
+// Creates an empty list. False if the name is unusable or the file cannot be written.
+inline bool createList(const std::string& name) {
+  if (name.empty()) return false;
+  Storage.ensureDirectoryExists(kListsDir);
+  const std::string path = pathFor(name);
+  if (Storage.exists(path.c_str())) return true;
+  return Storage.writeFile(path.c_str(), String(""));
+}
+
 // Writes the post-it cover (/Lists/cover.bmp) once, if it is not there yet.
 inline void ensureCover() {
   const std::string path = std::string(kListsDir) + "/cover.bmp";
@@ -92,6 +109,20 @@ inline bool isDoneHidden(const std::string& name) {
     if (n == name) return true;
   }
   return false;
+}
+
+inline void setDoneHidden(const std::string& name, bool hidden);
+
+// Renames a list file and carries its "hide checked" choice over. False if the new name is
+// unusable or already taken.
+inline bool renameList(const std::string& oldName, const std::string& newName) {
+  if (newName.empty() || newName == oldName) return false;
+  const std::string from = pathFor(oldName);
+  const std::string to = pathFor(newName);
+  if (Storage.exists(to.c_str())) return false;
+  if (!Storage.rename(from.c_str(), to.c_str())) return false;
+  if (isDoneHidden(oldName)) setDoneHidden(newName, true);
+  return true;
 }
 
 inline void setDoneHidden(const std::string& name, const bool hidden) {
