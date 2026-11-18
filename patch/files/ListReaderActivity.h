@@ -9,7 +9,7 @@
 //    tap a box (left margin)        tick / untick
 //    tap an empty line              keyboard: add items (commas separate them)
 //    long press an item             small buttons: edit / delete (delete has an undo)
-//    long press the headline        small buttons: new list / rename / delete list (asks first)
+//    tap or hold the headline       small buttons: new list / rename / delete list (asks first)
 //    reader-menu gesture            hide / show checked items (remembered per list)
 //    swipe or tap elsewhere         turn pages, as set in Settings
 //  X3 / X4 (keys):

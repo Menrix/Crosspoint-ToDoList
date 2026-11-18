@@ -40,13 +40,13 @@ already there. List names are written in capitals, like the headline.
 | Turn the page | Swipe or tap elsewhere (as in Settings) | Side keys |
 | Add entries | Tap an empty line | **Confirm** held → menu |
 | Edit or delete an entry | Hold the entry | **Confirm** held → menu |
-| New list, rename, delete list | Hold the headline | **Confirm** held → menu |
+| New list, rename, delete list | Tap the headline | **Confirm** held → menu |
 | Hide / show checked | Reader-menu gesture (the bottom line says which) | **Confirm** held → menu |
 
 - **Several entries at once:** separate them with `,` or `;`, e.g. `Milk, Bread; Cheese`.
   When editing, the first part replaces the entry and the rest go right below it.
 - **Delete:** empty the text, or choose delete. The bottom line offers **undo**.
-- **Delete a whole list:** hold the headline → **delete list**. It asks first, then removes the
+- **Delete a whole list:** tap the headline → **delete list**. It asks first, then removes the
   list with its cover and returns to the home screen.
 
 ## Lists on the SD card

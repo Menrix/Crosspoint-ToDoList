@@ -374,7 +374,10 @@ void ListReaderActivity::loop() {
         const int hit = currentPage < static_cast<int>(pages.size())
                             ? todolist::entryAt(pages[currentPage], y - paper.listTop, 0)
                             : -1;
-        if (inList && x < paper.marginX) {
+        if (y < paper.firstRuleY - 4) {
+          overlay = Overlay::Title;  // the headline: new list / rename / delete list
+          used = true;
+        } else if (inList && x < paper.marginX) {
           if (hit >= 0) toggleEntry(hit);  // box column: tick
           used = true;
         } else if (inList && hit < 0) {
