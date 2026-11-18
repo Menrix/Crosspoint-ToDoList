@@ -1,7 +1,12 @@
 #include "ListReaderActivity.h"
 
+#include <EpdFont.h>
+#include <EpdFontFamily.h>
 #include <GfxRenderer.h>
 #include <I18n.h>
+#include <builtinFonts/patrickhand_20_regular.h>
+#include <builtinFonts/patrickhand_26_regular.h>
+#include <esp_random.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -14,17 +19,34 @@
 #include "fontIds.h"
 
 namespace {
-// Tick strip on touch screens: about 1.5 cm from the left screen edge (X4 Pro: ~220 dpi).
-constexpr int kStripPx = 130;
 constexpr unsigned long kMenuHoldMs = 700;  // X3/X4: Confirm held this long = show/hide done
+
+// Handwriting (Patrick Hand, SIL Open Font License), built into the firmware for the lists only.
+constexpr int kListFontId = 0x4C495354;   // "LIST"
+constexpr int kTitleFontId = 0x4C495448;  // "LITH"
+EpdFont listFont(&patrickhand_20_regular);
+EpdFont titleFont(&patrickhand_26_regular);
+
+void registerFonts(GfxRenderer& renderer) {
+  static bool done = false;
+  if (done) return;
+  renderer.insertFont(kListFontId, EpdFontFamily(20, &listFont));
+  renderer.insertFont(kTitleFontId, EpdFontFamily(26, &titleFont));
+  done = true;
+}
 }  // namespace
 
 bool ListReaderActivity::loadBook() {
+  registerFonts(renderer);
   listName = todolist::nameFromPath(bookPath);
   if (!todolist::loadList(bookPath, items)) return false;
   hideDone = todolist::isDoneHidden(listName);
+  todolist::ensureCover();
+  newSheet();
   return true;
 }
+
+void ListReaderActivity::newSheet() { paperSeed = esp_random() | 1u; }
 
 bool ListReaderActivity::pageTurn(const bool isForward) {
   RenderLock lock(*this);
@@ -32,6 +54,7 @@ bool ListReaderActivity::pageTurn(const bool isForward) {
   if (isForward ? currentPage >= last : currentPage <= 0) return false;
   currentPage += isForward ? 1 : -1;
   selected = 0;
+  newSheet();
   return true;
 }
 
@@ -50,6 +73,7 @@ void ListReaderActivity::toggleHideDone() {
   todolist::setDoneHidden(listName, hideDone);
   currentPage = 0;
   selected = 0;
+  newSheet();
 }
 
 void ListReaderActivity::moveSelection(const int delta) {
@@ -61,10 +85,12 @@ void ListReaderActivity::moveSelection(const int delta) {
     if (currentPage + 1 >= static_cast<int>(pages.size())) return;  // already on the last entry
     currentPage++;
     sel = 0;
+    newSheet();
   } else if (sel < 0) {
     if (currentPage == 0) return;
     currentPage--;
     sel = -1;  // last entry of the previous page (its size is known after the next layout)
+    newSheet();
   }
   selected = sel;
 }
@@ -76,15 +102,15 @@ void ListReaderActivity::loop() {
   const bool touch = mappedInput.hasTouch();
 
   if (touch) {
-    // A tap in the strip ticks. Checked first, so the same tap cannot also turn the page.
+    // A tap in the margin ticks. Checked first, so the same tap cannot also turn the page.
     int x = 0;
     int y = 0;
-    if (mappedInput.wasScreenTapped(x, y) && x < stripRight) {
+    if (mappedInput.wasScreenTapped(x, y) && x < paper.marginX) {
       bool changed = false;
       {
         RenderLock lock(*this);
         if (currentPage < static_cast<int>(pages.size())) {
-          const int hit = todolist::entryAt(pages[currentPage], y - areaTop, entryGap);
+          const int hit = todolist::entryAt(pages[currentPage], y - paper.listTop, 0);
           if (hit >= 0) {
             toggleEntry(hit);
             changed = true;
@@ -128,8 +154,10 @@ void ListReaderActivity::loop() {
       return;
     }
     const bool swap = mappedInput.isNavDirectionSwapped();
-    const bool nextKey = mappedInput.wasPressed(swap ? MappedInputManager::Button::Left : MappedInputManager::Button::Right);
-    const bool prevKey = mappedInput.wasPressed(swap ? MappedInputManager::Button::Right : MappedInputManager::Button::Left);
+    const bool nextKey =
+        mappedInput.wasPressed(swap ? MappedInputManager::Button::Left : MappedInputManager::Button::Right);
+    const bool prevKey =
+        mappedInput.wasPressed(swap ? MappedInputManager::Button::Right : MappedInputManager::Button::Left);
     if (nextKey || prevKey) {
       {
         RenderLock lock(*this);
@@ -146,9 +174,8 @@ void ListReaderActivity::loop() {
   bool next = touchTurn.next;
   if (!touch) {
     // On X3/X4 the front Left/Right keys select entries, so only the side keys turn pages.
-    const auto pressed = [&](const MappedInputManager::Button b) { return mappedInput.wasPressed(b); };
-    prev = prev || pressed(MappedInputManager::Button::PageBack);
-    next = next || pressed(MappedInputManager::Button::PageForward) ||
+    prev = prev || mappedInput.wasPressed(MappedInputManager::Button::PageBack);
+    next = next || mappedInput.wasPressed(MappedInputManager::Button::PageForward) ||
            (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
             mappedInput.wasReleased(MappedInputManager::Button::Power));
   } else {
@@ -170,35 +197,18 @@ void ListReaderActivity::renderBook() {
   int bottom = 0;
   int left = 0;
   renderer.getOrientedViewableTRBL(&top, &right, &bottom, &left);
-  top += SETTINGS.screenMargin;
-  right += SETTINGS.screenMargin;
-  bottom += SETTINGS.screenMargin;
-  left += SETTINGS.screenMargin;
-  const int width = renderer.getScreenWidth() - left - right;
-  const int screenHeight = renderer.getScreenHeight();
+  const int width = renderer.getScreenWidth();
+  const int height = renderer.getScreenHeight();
 
-  const int fontId = SETTINGS.getReaderFontId();
-  const int lineHeight = std::max(1, renderer.getLineHeight(fontId, SETTINGS.getReaderLineCompression()));
-  const int box = std::clamp(renderer.getFontAscenderSize(fontId), 16, 40);
-  const int boxGap = std::max(10, box / 2);
-  const int textX = left + box + boxGap;
-  const int textWidth = std::max(40, left + width - textX);
-  entryGap = std::max(8, lineHeight / 2);
-  stripRight = std::max(textX, std::min(kStripPx, renderer.getScreenWidth() * 3 / 10));
+  const int lineHeight = std::max(1, renderer.getLineHeight(kListFontId));
+  paper = listpaper::geometry(width, height, lineHeight, top, right, bottom, left);
+  const int textWidth = std::max(40, paper.right - paper.textX);
 
-  // Header: list name, then "3 of 5 open" (and the hidden note), then a rule.
-  const int titleFont = UI_12_FONT_ID;
-  const int infoFont = UI_10_FONT_ID;
-  const int titleH = renderer.getLineHeight(titleFont);
-  const int infoH = renderer.getLineHeight(infoFont);
-
-  // Layout first, so the header can show the page count.
-  areaTop = top + titleH + infoH + 14;
-  const int areaHeight = screenHeight - bottom - areaTop;
+  // Entries sit on the ruled lines: one text line = one ruled line, no extra gaps.
   const todolist::WrapFn wrap = [&](const std::string& text, const int maxLines) {
-    return renderer.wrappedText(fontId, text.c_str(), textWidth, maxLines);
+    return renderer.wrappedText(kListFontId, text.c_str(), textWidth, maxLines);
   };
-  pages = todolist::layout(items, hideDone, wrap, areaHeight, lineHeight, entryGap);
+  pages = todolist::layout(items, hideDone, wrap, paper.lineCount * paper.pitch, paper.pitch, 0);
   if (currentPage >= static_cast<int>(pages.size())) currentPage = std::max(0, static_cast<int>(pages.size()) - 1);
   if (!pages.empty()) {
     const int count = static_cast<int>(pages[currentPage].entries.size());
@@ -206,13 +216,14 @@ void ListReaderActivity::renderBook() {
   }
 
   renderer.clearScreen();
+  const auto px = [&](const int x, const int y, const bool black) {
+    if (x >= 0 && y >= 0 && x < width && y < height) renderer.drawPixel(x, y, black);
+  };
+  listpaper::paintPaper(paper, paperSeed, px);
 
-  char pageText[16] = "";
-  if (pages.size() > 1) snprintf(pageText, sizeof(pageText), "%d/%d", currentPage + 1, static_cast<int>(pages.size()));
-  const int pageW = pageText[0] ? renderer.getTextWidth(infoFont, pageText) + 12 : 0;
-  const std::string title = renderer.truncatedText(titleFont, listName.c_str(), width, EpdFontFamily::BOLD);
-  renderer.drawText(titleFont, left, top, title.c_str(), true, EpdFontFamily::BOLD);
-
+  // Header: list name as a headline (upper case, felt-pen strokes), counts on the right.
+  const int titleAscender = renderer.getFontAscenderSize(kTitleFontId);
+  const int titleBaseline = paper.firstRuleY - 6;
   char info[96];
   if (saveFailed) {
     snprintf(info, sizeof(info), "%s", tr(STR_TODO_SAVE_FAILED));
@@ -223,40 +234,37 @@ void ListReaderActivity::renderBook() {
       snprintf(info + used, sizeof(info) - used, " \xC2\xB7 %s", tr(STR_TODO_DONE_HIDDEN));
     }
   }
-  const std::string infoLine = renderer.truncatedText(infoFont, info, width - pageW);
-  renderer.drawText(infoFont, left, top + titleH, infoLine.c_str());
-  if (pageText[0]) {
-    renderer.drawText(infoFont, left + width - renderer.getTextWidth(infoFont, pageText), top + titleH, pageText);
+  if (pages.size() > 1) {
+    const size_t used = strlen(info);
+    snprintf(info + used, sizeof(info) - used, " \xC2\xB7 %d/%d", currentPage + 1, static_cast<int>(pages.size()));
   }
-  renderer.drawLine(left, areaTop - 7, left + width, areaTop - 7, 2, true);
+  const int infoFont = UI_10_FONT_ID;
+  const int infoW = renderer.getTextWidth(infoFont, info);
+  const int infoX = paper.right - infoW;
+  renderer.drawText(infoFont, infoX, titleBaseline - renderer.getFontAscenderSize(infoFont), info);
+  const std::string headline = renderer.truncatedText(kTitleFontId, todolist::toHeadline(listName).c_str(),
+                                                      std::max(40, infoX - 12 - paper.textX));
+  for (int ox = 0; ox < 3; ox++) {  // three strokes side by side read like a felt pen
+    renderer.drawText(kTitleFontId, paper.textX + ox, titleBaseline - titleAscender, headline.c_str(), true);
+  }
 
+  // Entries: box in the margin on the entry's first line, text on the ruled lines.
+  const int ascender = renderer.getFontAscenderSize(kListFontId);
   if (pages.empty()) {
     const char* msg = items.empty() ? tr(STR_TODO_EMPTY) : tr(STR_TODO_ALL_DONE);
-    renderer.drawCenteredText(UI_12_FONT_ID, areaTop + areaHeight / 3, msg);
+    renderer.drawText(kListFontId, paper.textX, listpaper::ruleY(paper, 0) - 4 - ascender, msg, true);
   } else {
     const auto& page = pages[currentPage];
     for (int i = 0; i < static_cast<int>(page.entries.size()); i++) {
       const auto& entry = page.entries[i];
-      const int y = areaTop + entry.top;
-      const bool done = items[entry.item].done;
-
-      // Box, and for done entries a bold X in it.
-      const int bx = left;
-      const int by = y + std::max(0, (lineHeight - box) / 2);
-      renderer.drawRect(bx, by, box, box, 3, true);
-      if (done) {
-        const int p = std::max(4, box / 5);
-        renderer.drawLine(bx + p, by + p, bx + box - 1 - p, by + box - 1 - p, 3, true);
-        renderer.drawLine(bx + box - 1 - p, by + p, bx + p, by + box - 1 - p, 3, true);
-      }
-
+      const int firstLine = entry.top / paper.pitch;
+      listpaper::paintBox(paper, firstLine, items[entry.item].done, entry.item + 1, px);
       for (int l = 0; l < static_cast<int>(entry.lines.size()); l++) {
-        renderer.drawText(fontId, textX, y + l * lineHeight, entry.lines[l].c_str(), true);
+        renderer.drawText(kListFontId, paper.textX, listpaper::ruleY(paper, firstLine + l) - 4 - ascender,
+                          entry.lines[l].c_str(), true);
       }
-
-      // X3/X4: frame around the selected entry.
       if (!touch && i == selected) {
-        renderer.drawRoundedRect(left - 6, y - 5, width + 12, entry.height + 10, 2, 8, true);
+        listpaper::paintSelection(paper, firstLine, static_cast<int>(entry.lines.size()), px);
       }
     }
   }

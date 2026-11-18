@@ -1,5 +1,7 @@
 // PC test for ListCore.h:  g++ -std=c++17 -Wall -Wextra -I../patch/files test_listcore.cpp && ./a.out
 #include "ListCore.h"
+#include "ListCover.h"
+#include "ListPaper.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -81,6 +83,9 @@ static void testNames() {
   CHECK(!isListPath("/Lists/._Einkauf.txt"));  // macOS metadata file
   CHECK(!isListPath("/Lists/.hidden.txt"));
   CHECK(nameFromPath("/Lists/Urlaub packen.txt") == "Urlaub packen");
+  CHECK(toHeadline("Einkauf") == "EINKAUF");
+  CHECK(toHeadline("Größe & Maße 2") == "GRÖSSE & MASSE 2");
+  CHECK(toHeadline("ÄÖÜ äöü é") == "ÄÖÜ ÄÖÜ É");
 }
 
 static void testLayout() {
@@ -119,7 +124,28 @@ static void testLayout() {
   CHECK(countOpen(items) == 4);
 }
 
+static void testPaperAndCover() {
+  // Portrait X4 / X4 Pro screen: the page must leave room for several lines and keep the
+  // tick margin (everything left of marginX) wide enough for a finger.
+  const auto g = listpaper::geometry(480, 800, 58, 0, 0, 0, 0);
+  CHECK(g.lineCount >= 8);
+  CHECK(g.marginX >= 120 && g.marginX < 200);
+  CHECK(g.boxX > g.paperLeft + 30);
+  CHECK(g.textX > g.marginX);
+  CHECK(listpaper::ruleY(g, g.lineCount - 1) < 800);
+  int black = 0;
+  listpaper::paintPaper(g, 7u, [&](int x, int y, bool b) {
+    if (x < 0 || y < 0 || x >= 480 || y >= 800) failures += 1000;  // never draws off screen
+    black += b ? 1 : 0;
+  });
+  CHECK(black > 1000);
+  const auto bmp = todolist::makeCoverBmp();
+  CHECK(bmp.size() == 14u + 40u + 1024u + 300u * 400u);
+  CHECK(bmp[0] == 'B' && bmp[1] == 'M');
+}
+
 int main() {
+  testPaperAndCover();
   testParse();
   testSerialize();
   testMerge();

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "ListCore.h"
+#include "ListCover.h"
 
 namespace todolist {
 
@@ -47,6 +48,27 @@ inline bool saveList(const std::string& path, const std::vector<Item>& items) {
     return false;
   }
   return true;
+}
+
+// Writes the post-it cover (/Lists/cover.bmp) once, if it is not there yet.
+inline void ensureCover() {
+  const std::string path = std::string(kListsDir) + "/cover.bmp";
+  if (Storage.exists(path.c_str())) return;
+  Storage.ensureDirectoryExists(kListsDir);
+  const std::vector<uint8_t> bmp = makeCoverBmp();
+  const std::string tmp = path + ".tmp";
+  {
+    HalFile f;
+    if (!Storage.openFileForWrite("TODO", tmp, f)) return;
+    const bool complete = f.write(bmp.data(), bmp.size()) == bmp.size();
+    f.flush();
+    if (!complete) {
+      f.close();
+      Storage.remove(tmp.c_str());
+      return;
+    }
+  }
+  if (!Storage.replaceFile(tmp.c_str(), path.c_str())) Storage.remove(tmp.c_str());
 }
 
 inline std::vector<std::string> loadHiddenNames() {

@@ -346,6 +346,33 @@ inline int entryAt(const Page& page, const int y, const int gap) {
   return -1;
 }
 
+// List name as a headline: upper case for ASCII and the Latin-1 letters (ä -> Ä), ß -> SS.
+inline std::string toHeadline(const std::string& s) {
+  std::string out;
+  out.reserve(s.size() + 4);
+  for (size_t i = 0; i < s.size(); i++) {
+    const unsigned char c = static_cast<unsigned char>(s[i]);
+    if (c >= 'a' && c <= 'z') {
+      out.push_back(static_cast<char>(c - 32));
+    } else if (c == 0xC3 && i + 1 < s.size()) {
+      const unsigned char d = static_cast<unsigned char>(s[i + 1]);
+      if (d == 0x9F) {
+        out += "SS";  // ß
+      } else if (d >= 0xA0 && d <= 0xBE && d != 0xB7) {
+        out.push_back(static_cast<char>(c));
+        out.push_back(static_cast<char>(d - 0x20));
+      } else {
+        out.push_back(static_cast<char>(c));
+        out.push_back(static_cast<char>(d));
+      }
+      i++;
+    } else {
+      out.push_back(static_cast<char>(c));
+    }
+  }
+  return out;
+}
+
 inline int countOpen(const std::vector<Item>& items) {
   int n = 0;
   for (const auto& item : items) n += item.done ? 0 : 1;

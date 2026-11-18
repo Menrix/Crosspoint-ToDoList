@@ -27,11 +27,17 @@ and write the lists. Lines without `[ ]` count as open entries.
 
 Open a list from the file browser or the library like a book. Other books are not affected.
 
+The list looks like a sheet torn from a spiral notepad, written in a handwriting font
+([Patrick Hand](https://fonts.google.com/specimen/Patrick+Hand), built in, with ä ö ü ß and the usual
+special characters). Every page is torn a little differently. On the home screen, lists show as a
+sticky note: the reader writes one picture, `/Lists/cover.bmp`, that CrossPoint uses as the cover
+of every list.
+
 ### X4 Pro (touch screen)
 
 | Action | Result |
 | --- | --- |
-| **Tap the strip on the left** (about 1.5 cm wide, where the boxes are) | Ticks or unticks that entry |
+| **Tap the margin on the left** (left of the margin line, where the boxes are) | Ticks or unticks that entry |
 | Swipe, or tap elsewhere | Turns the page, exactly as set in Settings |
 | **Reader-menu gesture** (center tap or the swipe set in Settings) | Hides or shows done entries for this list |
 
@@ -39,8 +45,8 @@ Open a list from the file browser or the library like a book. Other books are no
 
 | Key | Result |
 | --- | --- |
-| **Left / Right** (front) | Moves the frame to the previous / next entry, across pages |
-| **Confirm** | Ticks or unticks the framed entry |
+| **Left / Right** (front) | Moves the marker to the previous / next entry, across pages |
+| **Confirm** | Ticks or unticks the marked entry |
 | **Confirm, hold** | Hides or shows done entries for this list |
 | Side keys | Turn the page |
 
@@ -132,6 +138,9 @@ repository, so updates keep the lists.
 
 - `patch/files/ListCore.h`: the list rules (reading, saving, adding, page layout), no hardware code
 - `patch/files/ListStore.h`: reads and writes the list files on the SD card
+- `patch/files/ListPaper.h`: the notepad look (no hardware code; `tools/` draws a PC preview with it)
+- `patch/files/ListCover.h`: the sticky-note cover
+- `patch/files/fonts/`: the handwriting font, converted with CrossPoint's own font tool
 - `patch/files/ListReaderActivity.*`: the list screen on the reader
 - `patch/files/ListsWeb.h`: the two web addresses
 - `patch/apply_todolist.py`: adds all of this to a CrossPoint source tree
@@ -142,4 +151,5 @@ Self-built firmware does not include the official release key for CrossPoint's L
 (only relevant for LCP-protected books from that service). Everything else works as in the
 official release.
 
-MIT licensed, like CrossPoint.
+MIT licensed, like CrossPoint. The Patrick Hand font is © Patrick Wagesreiter, licensed under the
+SIL Open Font License 1.1 (`licenses/PatrickHand-OFL.txt`).

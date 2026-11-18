@@ -16,7 +16,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-READER_FILES = ("ListCore.h", "ListStore.h", "ListReaderActivity.h", "ListReaderActivity.cpp")
+READER_FILES = ("ListCore.h", "ListStore.h", "ListPaper.h", "ListCover.h", "ListReaderActivity.h",
+                "ListReaderActivity.cpp")
+FONT_FILES = ("patrickhand_20_regular.h", "patrickhand_26_regular.h")
 NETWORK_FILES = ("ListsWeb.h",)
 
 STRINGS = {
@@ -66,6 +68,11 @@ def main() -> None:
         shutil.copy(HERE / "files" / name, reader_dir / name)
     for name in NETWORK_FILES:
         shutil.copy(HERE / "files" / name, network_dir / name)
+    fonts_dir = root / "lib" / "EpdFont" / "builtinFonts"
+    if not fonts_dir.is_dir():
+        fail(f"{fonts_dir} not found")
+    for name in FONT_FILES:
+        shutil.copy(HERE / "files" / "fonts" / name, fonts_dir / name)
 
     # 1) Files in /Lists open as a list instead of the text reader.
     src = reader.read_text(encoding="utf-8")
