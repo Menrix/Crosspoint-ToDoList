@@ -78,6 +78,8 @@ static void testNames() {
   CHECK(!isListPath("/Books/Einkauf.txt"));
   CHECK(!isListPath("/Lists/Einkauf.epub"));
   CHECK(!isListPath("/Lists/.txt"));
+  CHECK(!isListPath("/Lists/._Einkauf.txt"));  // macOS metadata file
+  CHECK(!isListPath("/Lists/.hidden.txt"));
   CHECK(nameFromPath("/Lists/Urlaub packen.txt") == "Urlaub packen");
 }
 

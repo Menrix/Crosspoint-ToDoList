@@ -273,6 +273,8 @@ inline bool isListPath(const std::string& path) {
   }
   const std::string rest = path.substr(dir.size());
   if (rest.find('/') != std::string::npos) return false;
+  // Hidden files are never lists, e.g. the "._Name.txt" files macOS leaves on SD cards.
+  if (rest[0] == '.') return false;
   std::string ext = rest.substr(rest.size() - 4);
   for (char& c : ext) c = static_cast<char>((c >= 'A' && c <= 'Z') ? c + 32 : c);
   return ext == ".txt";
