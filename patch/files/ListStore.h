@@ -51,12 +51,12 @@ inline bool saveList(const std::string& path, const std::vector<Item>& items) {
   return true;
 }
 
-// First start: no /Lists folder yet -> create it with an empty "To do" list, so there is always
-// a list to open and start writing in on the reader itself.
+// First start: no /Lists folder yet -> create it with an empty "TO DO" list, so there is always
+// a list to open and start writing in on the reader itself. Names are in capitals, like the headline.
 inline void ensureStarterList() {
   if (Storage.exists(kListsDir)) return;
   Storage.ensureDirectoryExists(kListsDir);
-  Storage.writeFile(pathFor("To do").c_str(), String(""));
+  Storage.writeFile(pathFor("TO DO").c_str(), String(""));
 }
 
 // Creates an empty list. False if the name is unusable or the file cannot be written.
@@ -158,8 +158,19 @@ inline bool renameList(const std::string& oldName, const std::string& newName) {
   if (newName.empty() || newName == oldName) return false;
   const std::string from = pathFor(oldName);
   const std::string to = pathFor(newName);
-  if (Storage.exists(to.c_str())) return false;
-  if (!Storage.rename(from.c_str(), to.c_str())) return false;
+  // The SD card ignores letter case, so "Einkauf" -> "EINKAUF" would look taken; go via a
+  // temporary name for that case.
+  if (detail::foldKey(oldName) == detail::foldKey(newName)) {
+    const std::string tmp = from + ".rename";
+    if (!Storage.rename(from.c_str(), tmp.c_str())) return false;
+    if (!Storage.rename(tmp.c_str(), to.c_str())) {
+      Storage.rename(tmp.c_str(), from.c_str());
+      return false;
+    }
+  } else {
+    if (Storage.exists(to.c_str())) return false;
+    if (!Storage.rename(from.c_str(), to.c_str())) return false;
+  }
   if (isDoneHidden(oldName)) setDoneHidden(newName, true);
   return true;
 }

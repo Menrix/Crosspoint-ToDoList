@@ -181,7 +181,7 @@ void ListReaderActivity::openKeyboard(const Action action, const int item) {
       break;
     case Action::Rename:
       title = tr(STR_TODO_KB_RENAME);
-      text = listName;
+      text = todolist::toHeadline(listName);
       break;
     default:
       return;
@@ -189,6 +189,8 @@ void ListReaderActivity::openKeyboard(const Action action, const int item) {
   undoPending = false;
   auto keyboard = makeUniqueNoThrow<KeyboardEntryActivity>(renderer, mappedInput, title, text, kMaxTyped);
   if (!keyboard) return;
+  // List names are written in capitals (like the headline): the keyboard stays in upper case.
+  if (action == Action::NewList || action == Action::Rename) keyboard->setCapsLock();
   // The result handler runs with the render lock already held: never lock again in here.
   startActivityForResult(std::move(keyboard), [this, action, item](const ActivityResult& result) {
     pagesUntilFullRefresh = 1;  // clean refresh after the keyboard
@@ -216,7 +218,7 @@ void ListReaderActivity::openKeyboard(const Action action, const int item) {
         break;
       }
       case Action::NewList: {
-        const std::string name = todolist::sanitizeName(typed);
+        const std::string name = todolist::sanitizeName(todolist::toHeadline(typed));
         if (name.empty() || !todolist::createList(name)) {
           message = tr(STR_TODO_NAME_INVALID);
           break;
@@ -225,7 +227,7 @@ void ListReaderActivity::openKeyboard(const Action action, const int item) {
         break;
       }
       case Action::Rename: {
-        const std::string name = todolist::sanitizeName(typed);
+        const std::string name = todolist::sanitizeName(todolist::toHeadline(typed));
         if (name.empty() || name == listName) break;
         if (!todolist::renameList(listName, name)) {
           message = tr(STR_TODO_NAME_TAKEN);

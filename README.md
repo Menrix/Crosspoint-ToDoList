@@ -31,8 +31,8 @@ Later, **Settings → Check for Updates** gets new versions from here.
 
 ## Use
 
-Open a list from the file browser or the library, like a book. A first list, **To do**, is
-already there.
+Open a list from the file browser or the library, like a book. A first list, **TO DO**, is
+already there. List names are written in capitals, like the headline.
 
 | What | X4 Pro (touch) | X3 / X4 (buttons) |
 | --- | --- | --- |

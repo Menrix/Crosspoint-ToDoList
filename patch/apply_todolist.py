@@ -148,6 +148,26 @@ def main() -> None:
                        "list covers")
     txt.write_text(src, encoding="utf-8")
 
+    # 3c) The keyboard can stay in capitals (list names are written in capitals, like the headline).
+    kb_h = root / "src" / "activities" / "util" / "KeyboardEntryActivity.h"
+    kb_cpp = root / "src" / "activities" / "util" / "KeyboardEntryActivity.cpp"
+    src = kb_h.read_text(encoding="utf-8")
+    src = replace_once(src, "  bool preventAutoSleep() override { return true; }\n",
+                       "  bool preventAutoSleep() override { return true; }\n"
+                       "  // Start in upper case and stay there (Crosspoint-ToDoList: list names).\n"
+                       "  void setCapsLock() { capsLock = true; }\n", "keyboard caps setter")
+    src = replace_once(src, "  bool shifted = false;\n",
+                       "  bool shifted = false;\n  bool capsLock = false;\n", "keyboard caps flag")
+    kb_h.write_text(src, encoding="utf-8")
+    src = kb_cpp.read_text(encoding="utf-8")
+    src = replace_once(src, "  shifted = false;\n  symbols = false;\n  urlPanel = false;\n  cursorMode = false;\n",
+                       "  shifted = capsLock;\n  symbols = false;\n  urlPanel = false;\n  cursorMode = false;\n",
+                       "keyboard starts in caps")
+    src = replace_once(src, "      if (shifted && !symbols) {\n        shifted = false;  // shift auto-releases after one character\n",
+                       "      if (shifted && !symbols && !capsLock) {\n        shifted = false;  // shift auto-releases after one character\n",
+                       "keyboard keeps caps")
+    kb_cpp.write_text(src, encoding="utf-8")
+
     # 4) Texts. Languages without their own entry fall back to English.
     translations = root / "lib" / "I18n" / "translations"
     for file_name, entries in STRINGS.items():
