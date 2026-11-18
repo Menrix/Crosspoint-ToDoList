@@ -4,7 +4,7 @@ A small add-on for [CrossPoint Reader](https://github.com/crosspoint-reader/cros
 to-do and shopping lists you can tick off on the reader, and add to from your phone or computer
 with the normal **Share** menu.
 
-<img src="images/list-preview.png" width="200" alt="A shopping list on the reader">
+<img src="images/list-preview.jpg" width="200" alt="A shopping list on the reader">
 
 This repository does not contain a copy of CrossPoint. A GitHub Action takes every new official
 CrossPoint release, adds the lists and publishes the finished firmware under **Releases**.
