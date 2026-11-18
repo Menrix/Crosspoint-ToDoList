@@ -9,7 +9,7 @@
 //    tap a box (left margin)        tick / untick
 //    tap an empty line              keyboard: add items (commas separate them)
 //    long press an item             small buttons: edit / delete (delete has an undo)
-//    long press the headline        small buttons: new list / rename
+//    long press the headline        small buttons: new list / rename / delete list (asks first)
 //    reader-menu gesture            hide / show checked items (remembered per list)
 //    swipe or tap elsewhere         turn pages, as set in Settings
 //  X3 / X4 (keys):
@@ -25,7 +25,7 @@
 #include "ReaderActivity.h"
 
 class ListReaderActivity final : public ReaderActivity {
-  enum class Action : uint8_t { None, Edit, Delete, Add, NewList, Rename, ToggleHide, Undo };
+  enum class Action : uint8_t { None, Edit, Delete, Add, NewList, Rename, DeleteList, ToggleHide, Undo };
   enum class Overlay : uint8_t { None, Item, Title, Menu };
 
   struct Button {
@@ -70,6 +70,7 @@ class ListReaderActivity final : public ReaderActivity {
   int selectedEntry() const;
   void runAction(Action action, int pageEntry);
   void openKeyboard(Action action, int item);
+  void confirmDeleteList();
   void drawOverlay(bool touch);
   bool handleOverlayInput(bool touch);
 

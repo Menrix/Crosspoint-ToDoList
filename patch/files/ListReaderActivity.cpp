@@ -4,6 +4,7 @@
 #include <EpdFontFamily.h>
 #include <GfxRenderer.h>
 #include <I18n.h>
+#include <LibraryBuilder.h>
 #include <builtinFonts/patrickhand_11_regular.h>
 #include <builtinFonts/patrickhand_20_regular.h>
 #include <builtinFonts/patrickhand_26_regular.h>
@@ -18,7 +19,9 @@
 #include "ListStore.h"
 #include "ReaderUtils.h"
 #include "RecentBooksStore.h"
+#include "activities/util/ConfirmationActivity.h"
 #include "activities/util/KeyboardEntryActivity.h"
+#include "util/BookCacheUtils.h"
 #include "fontIds.h"
 
 namespace {
@@ -160,9 +163,38 @@ void ListReaderActivity::runAction(const Action action, const int pageEntry) {
     case Action::Rename:
       openKeyboard(action, -1);
       break;
+    case Action::DeleteList:
+      confirmDeleteList();
+      break;
     case Action::None:
       break;
   }
+}
+
+// Deleting a whole list cannot be undone, so it asks first. On "yes" the file goes, together with
+// everything kept about it (cache and home-screen picture, "recent" entry, hide setting), and the
+// reader returns to the home screen.
+void ListReaderActivity::confirmDeleteList() {
+  overlay = Overlay::None;
+  undoPending = false;
+  auto confirmation = makeUniqueNoThrow<ConfirmationActivity>(renderer, mappedInput, tr(STR_TODO_DELETE_LIST_ASK),
+                                                              todolist::toHeadline(listName));
+  if (!confirmation) return;
+  // The result handler runs with the render lock already held: never lock again in here.
+  startActivityForResult(std::move(confirmation), [this](const ActivityResult& result) {
+    pagesUntilFullRefresh = 1;
+    if (result.isCancelled) return;
+    const std::string tmp = bookPath + ".tmp";
+    if (Storage.exists(tmp.c_str())) Storage.remove(tmp.c_str());
+    if (!removeBookFile(bookPath) && Storage.exists(bookPath.c_str())) {
+      message = tr(STR_TODO_SAVE_FAILED);
+      return;
+    }
+    if (RECENT_BOOKS.removeByPath(bookPath)) RECENT_BOOKS.saveToFile();
+    todolist::setDoneHidden(listName, false);  // also forgets lists that no longer exist
+    library::markLibraryIndexDirty();
+    activityManager.goHome();
+  });
 }
 
 void ListReaderActivity::openKeyboard(const Action action, const int item) {
@@ -460,21 +492,37 @@ void ListReaderActivity::drawOverlay(const bool touch) {
 
   if (touch && (overlay == Overlay::Item || overlay == Overlay::Title)) {
     const bool item = overlay == Overlay::Item;
-    const char* first = item ? tr(STR_TODO_EDIT) : tr(STR_TODO_NEW_LIST);
-    const char* second = item ? tr(STR_TODO_DELETE) : tr(STR_TODO_RENAME);
+    std::vector<std::pair<const char*, Action>> pills;
+    if (item) {
+      pills = {{tr(STR_TODO_EDIT), Action::Edit}, {tr(STR_TODO_DELETE), Action::Delete}};
+    } else {
+      pills = {{tr(STR_TODO_NEW_LIST), Action::NewList},
+               {tr(STR_TODO_RENAME), Action::Rename},
+               {tr(STR_TODO_DELETE_LIST), Action::DeleteList}};
+    }
     const int h = std::max(smallLine + 14, paper.pitch - 18);
-    const int w1 = renderer.getTextWidth(kSmallFontId, first) + 36;
-    const int w2 = renderer.getTextWidth(kSmallFontId, second) + 36;
+    constexpr int gap = 12;
+    // Right-aligned on the line; less padding if three buttons would not fit beside the margin.
+    const int room = paper.right - (paper.marginX + 6);
+    int pad = 36;
+    const auto total = [&](const int p) {
+      int sum = gap * (static_cast<int>(pills.size()) - 1);
+      for (const auto& pl : pills) sum += renderer.getTextWidth(kSmallFontId, pl.first) + p;
+      return sum;
+    };
+    while (pad > 16 && total(pad) > room) pad -= 4;
     int y = paper.firstRuleY - h - 6;  // headline row
     if (item && currentPage < static_cast<int>(pages.size()) &&
         overlayEntry < static_cast<int>(pages[currentPage].entries.size())) {
       const int line = pages[currentPage].entries[overlayEntry].top / paper.pitch;
       y = listpaper::ruleY(paper, line) - h - 2;
     }
-    const int x2 = paper.right - w2;
-    const int x1 = x2 - 14 - w1;
-    pill(x1, y, w1, h, first, item ? Action::Edit : Action::NewList, true);
-    pill(x2, y, w2, h, second, item ? Action::Delete : Action::Rename, true);
+    int x = paper.right - total(pad);
+    for (const auto& pl : pills) {
+      const int w = renderer.getTextWidth(kSmallFontId, pl.first) + pad;
+      pill(x, y, w, h, pl.first, pl.second, true);
+      x += w + gap;
+    }
     return;
   }
 
@@ -489,6 +537,7 @@ void ListReaderActivity::drawOverlay(const bool touch) {
   rows.emplace_back(hideDone ? tr(STR_TODO_MENU_SHOW) : tr(STR_TODO_MENU_HIDE), Action::ToggleHide);
   rows.emplace_back(tr(STR_TODO_NEW_LIST), Action::NewList);
   rows.emplace_back(tr(STR_TODO_RENAME), Action::Rename);
+  rows.emplace_back(tr(STR_TODO_DELETE_LIST), Action::DeleteList);
   const int rowH = smallLine + 18;
   const int cardW = std::min(renderer.getScreenWidth() - 60, 300);
   const int cardH = static_cast<int>(rows.size()) * (rowH + 8) + 24;

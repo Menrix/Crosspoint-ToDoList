@@ -38,6 +38,8 @@ STRINGS = {
         "STR_TODO_DELETE": "delete",
         "STR_TODO_NEW_LIST": "new list",
         "STR_TODO_RENAME": "rename list",
+        "STR_TODO_DELETE_LIST": "delete list",
+        "STR_TODO_DELETE_LIST_ASK": "Delete this list for good?",
         "STR_TODO_ADD_ITEMS": "add items",
         "STR_TODO_UNDO": "undo delete",
         "STR_TODO_TO_UNDO": "to undo",
