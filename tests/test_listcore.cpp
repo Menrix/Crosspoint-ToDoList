@@ -51,6 +51,17 @@ static void testMerge() {
   CHECK(r.skipped == 2);  // Brot, and the second Käse
   CHECK(r.added == 1);
   CHECK(serialize(items) == "[ ] Milch\n[ ] Brot\n[ ] Käse\n");
+  CHECK(merge(items, commasToLines("Eier; Butter;Milch")).added == 2);
+  CHECK(items.size() == 5 && items[3].text == "Eier" && items[4].text == "Butter");
+
+  // Editing on the reader: the first part replaces the entry, the rest go right below it.
+  items = parse("[ ] A\n[x] B\n[ ] C\n");
+  CHECK(applyEdit(items, 0, "A1, X; Y, C"));
+  CHECK(serialize(items) == "[ ] A1\n[ ] X\n[ ] Y\n[x] B\n[ ] C\n");
+  CHECK(applyEdit(items, 4, "C2"));
+  CHECK(items[4].text == "C2" && items.size() == 5);
+  CHECK(!applyEdit(items, 0, " , ; "));  // nothing usable: the caller deletes the entry
+  CHECK(!applyEdit(items, 9, "Z"));
 
   // Umlauts fold for duplicates (ÄPFEL == äpfel), and incoming [x] is still added as open.
   items = parse("[ ] äpfel\n");
@@ -62,6 +73,17 @@ static void testMerge() {
   items = parse("");
   CHECK(merge(items, commasToLines("Milch, Brot ,Käse,, ")).added == 3);
   CHECK(serialize(items) == "[ ] Milch\n[ ] Brot\n[ ] Käse\n");
+  CHECK(merge(items, commasToLines("Eier; Butter;Milch")).added == 2);
+  CHECK(items.size() == 5 && items[3].text == "Eier" && items[4].text == "Butter");
+
+  // Editing on the reader: the first part replaces the entry, the rest go right below it.
+  items = parse("[ ] A\n[x] B\n[ ] C\n");
+  CHECK(applyEdit(items, 0, "A1, X; Y, C"));
+  CHECK(serialize(items) == "[ ] A1\n[ ] X\n[ ] Y\n[x] B\n[ ] C\n");
+  CHECK(applyEdit(items, 4, "C2"));
+  CHECK(items[4].text == "C2" && items.size() == 5);
+  CHECK(!applyEdit(items, 0, " , ; "));  // nothing usable: the caller deletes the entry
+  CHECK(!applyEdit(items, 9, "Z"));
 
   // Extra spaces inside an entry do not make a new one.
   items = parse("[ ] Batterien AA\n");

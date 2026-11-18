@@ -203,18 +203,16 @@ void ListReaderActivity::openKeyboard(const Action action, const int item) {
       }
       case Action::Edit: {
         if (item < 0 || item >= static_cast<int>(items.size())) break;
-        todolist::Item edited;
-        if (!todolist::parseLine(typed, edited)) {  // emptied: that is a delete
+        const std::vector<todolist::Item> before = items;
+        if (!todolist::applyEdit(items, static_cast<size_t>(item), typed)) {  // emptied: that is a delete
           undoItem = items[item];
           undoIndex = item;
           items.erase(items.begin() + item);
           undoPending = save();
-          if (!undoPending) items.insert(items.begin() + item, undoItem);
+          if (!undoPending) items = before;
           break;
         }
-        const todolist::Item before = items[item];
-        items[item].text = edited.text;
-        if (!save()) items[item] = before;
+        if (!save()) items = before;
         break;
       }
       case Action::NewList: {

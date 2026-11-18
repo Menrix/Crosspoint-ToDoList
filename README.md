@@ -41,6 +41,13 @@ pictures in `/.crosspoint/todolist/` and writes them again if they are missing.
 | **Tap the margin on the left** (left of the margin line, where the boxes are) | Ticks or unticks that entry |
 | Swipe, or tap elsewhere | Turns the page, exactly as set in Settings |
 | **Reader-menu gesture** (as set in Settings: tap the middle or swipe up) | Hides or shows checked items for this list |
+| **Tap an empty line** | Opens the keyboard to add entries |
+| **Hold an entry** | Edit or delete it (delete has an "undo" in the bottom line) |
+| **Hold the headline** | New list, rename this list, add entries |
+
+On the keyboard, `,` or `;` separate entries: `Milk, Bread; Cheese` adds three. When editing,
+the first part replaces the entry and the others are added right below it. Emptying the text
+deletes the entry.
 
 ### X3 and X4 (buttons only)
 
@@ -48,7 +55,7 @@ pictures in `/.crosspoint/todolist/` and writes them again if they are missing.
 | --- | --- |
 | **Left / Right** (front) | Moves the marker to the previous / next entry, across pages |
 | **Confirm** | Ticks or unticks the marked entry |
-| **Confirm, hold** | Hides or shows checked items for this list |
+| **Confirm, hold** | Menu: hide/show checked, add, edit, delete, new list, rename |
 | Side keys | Turn the page |
 
 The bottom line of every page says how: an open eye with "swipe up to hide checked"

@@ -206,8 +206,10 @@ struct AddResult {
 //  - already open       -> skipped (no duplicates)
 //  - already done       -> opened again ("milk" is back on the shopping list)
 // The incoming marker ([x]) is ignored: what is sent is something to do.
-inline AddResult merge(std::vector<Item>& items, const std::string& incoming) {
+// New entries go to the end, or from position insertAt on (used when an edit becomes several).
+inline AddResult merge(std::vector<Item>& items, const std::string& incoming, size_t insertAt = SIZE_MAX) {
   AddResult result;
+  if (insertAt > items.size()) insertAt = items.size();
   for (Item& add : parse(incoming)) {
     const std::string key = detail::foldKey(add.text);
     bool found = false;
@@ -224,21 +226,36 @@ inline AddResult merge(std::vector<Item>& items, const std::string& incoming) {
     }
     if (!found) {
       add.done = false;
-      items.push_back(std::move(add));
+      items.insert(items.begin() + static_cast<std::ptrdiff_t>(insertAt), std::move(add));
+      insertAt++;
       result.added++;
     }
   }
   return result;
 }
 
-// Text typed on the reader's keyboard (one line only): commas separate the items.
-// "Milk, Bread , Cheese" -> "Milk\nBread\nCheese". merge() then cleans every part as usual.
+// Text typed on the reader's keyboard (one line only): commas or semicolons separate the items.
+// "Milk, Bread ; Cheese" -> "Milk\nBread\nCheese". merge() then cleans every part as usual.
 inline std::string commasToLines(const std::string& typed) {
   std::string out = typed;
   for (char& c : out) {
-    if (c == ',') c = '\n';
+    if (c == ',' || c == ';') c = '\n';
   }
   return out;
+}
+
+// Editing an entry on the reader. The first part replaces the entry's text; any further parts
+// (separated as in commasToLines) become new entries right below it. Returns false when nothing
+// usable was typed: the caller treats that as deleting the entry.
+inline bool applyEdit(std::vector<Item>& items, const size_t index, const std::string& typed) {
+  if (index >= items.size()) return false;
+  const std::vector<Item> parts = parse(commasToLines(typed));
+  if (parts.empty()) return false;
+  items[index].text = parts[0].text;
+  std::string rest;
+  for (size_t i = 1; i < parts.size(); i++) rest += parts[i].text + "\n";
+  if (!rest.empty()) merge(items, rest, index + 1);
+  return true;
 }
 
 // List name -> safe file name part (without ".txt"). Empty result = not usable.

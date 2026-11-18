@@ -43,7 +43,7 @@ STRINGS = {
         "STR_TODO_TO_UNDO": "to undo",
         "STR_TODO_MENU_HIDE": "hide checked",
         "STR_TODO_MENU_SHOW": "show checked",
-        "STR_TODO_KB_ADD": "New items (commas separate them)",
+        "STR_TODO_KB_ADD": "New items (separate with , or ;)",
         "STR_TODO_KB_EDIT": "Edit item (empty = delete)",
         "STR_TODO_KB_NEW": "Name of the new list",
         "STR_TODO_KB_RENAME": "New name for this list",
