@@ -126,11 +126,8 @@ reader's hotspot. It only ever writes files in `/Lists`.
 
 ## How it is built
 
-This repository holds only the add-on, no copy of CrossPoint. Every night a GitHub Action takes the
-latest official CrossPoint release, adds the lists with `patch/apply_todolist.py`, builds both
-devices and publishes them under Releases. By hand: **Actions → Build CrossPoint with to-do lists
-→ Run workflow** (**force** rebuilds an existing version). If CrossPoint changed a spot the patch
-needs, the build stops with `TODOLIST PATCH FAILED: ...` instead of making a broken firmware.
+Only the add-on lives here. Every night a GitHub Action adds it to the latest official
+CrossPoint release and publishes the firmware under Releases.
 
 <details>
 <summary>Files</summary>
