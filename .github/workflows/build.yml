@@ -1,10 +1,9 @@
 name: Build CrossPoint with to-do lists
 
-# Runs every night. When there is a new official CrossPoint release or the add-on changed, it adds
-# the to-do lists, builds the firmware for the Xteink X4 Pro and for the X3/X4 and publishes both
+# Runs every night. When there is a new official CrossPoint release, it adds the to-do lists, builds the firmware for the Xteink X4 Pro and for the X3/X4 and publishes both
 # in a new release here. Every build has its own number: 2.0.0-todo.<build>. The reader shows it
 # in Settings, and "Check for Updates" finds newer builds by it.
-# "Run workflow" (Actions tab) starts it by hand; tick "force" to build even without changes.
+# "Run workflow" (Actions tab) builds by hand, e.g. after changes to the add-on.
 
 on:
   schedule:
@@ -15,10 +14,6 @@ on:
         description: "CrossPoint version to build (empty = latest release)"
         required: false
         default: ""
-      force:
-        description: "Build even if nothing changed since the last release"
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -44,7 +39,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           WANTED: ${{ inputs.version }}
-          FORCE: ${{ inputs.force }}
         run: |
           set -euo pipefail
           if [ -n "${WANTED:-}" ]; then
@@ -58,9 +52,10 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "full=$full" >> "$GITHUB_OUTPUT"
+          # Nightly: only when there is a new official CrossPoint. Started by hand: always.
           last="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .body 2>/dev/null || true)"
-          if [ "${FORCE:-false}" != "true" ] && printf '%s' "$last" | grep -qF "$source"; then
-            echo "Nothing changed since the last release. Nothing to do."
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] && printf '%s' "$last" | grep -qF "Built from CrossPoint ${tag} "; then
+            echo "CrossPoint $tag is already built. Nothing to do."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "Building $full."
