@@ -705,10 +705,10 @@ void ListReaderActivity::renderBook() {
     x += totalWidth + partGap;
 
     const auto smallBox = [&](const int bx, const bool done) {
-      renderer.drawRect(bx, iconY, icon, icon, true);
+      renderer.drawRect(bx, iconY, icon + 1, icon + 1, true);  // same size as the stacked boxes
       if (done) {
-        renderer.drawLine(bx + 2, iconY + 2, bx + icon - 3, iconY + icon - 3, true);
-        renderer.drawLine(bx + icon - 3, iconY + 2, bx + 2, iconY + icon - 3, true);
+        renderer.drawLine(bx + 2, iconY + 2, bx + icon - 2, iconY + icon - 2, true);
+        renderer.drawLine(bx + icon - 2, iconY + 2, bx + 2, iconY + icon - 2, true);
       }
     };
     smallBox(x, false);
