@@ -5,13 +5,15 @@ firmware.
 
 ![A shopping list on the Xteink X4 Pro](images/list.jpg)
 
-- Notepad look in a handwriting font
-- Tick, add, edit and delete entries and lists right on the reader
-- Hide checked entries per list
-- Send entries from your phone or computer
-- No double entries (upper or lower case doesn't matter)
-- Lists are plain text files
-- On the home screen every list is a notepad cover with its own name
+- **Create, edit and delete lists right on the reader**: no phone or computer needed
+- **Or from your phone or computer:** send entries, or write a list as a plain text file
+- **Tick, add, edit and delete entries** on the reader, with undo
+- **Intelligent lists:** no double entries (upper or lower case doesn't matter), and a ticked
+  entry that is added again simply comes back as open
+- **Hide checked entries** per list
+- **Swipe from list to list** like pages of one notepad
+- **Notepad look** in a handwriting font; on the home screen every list is a notepad cover
+  with its own name
 
 ## Install
 
