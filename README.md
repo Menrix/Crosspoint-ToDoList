@@ -44,63 +44,75 @@ Open a list like a book. A first list, **TO DO**, is already there.
 - A deleted entry can be brought back with **undo** in the bottom line. Deleting a whole list
   asks first.
 
-## Lists on the SD card
+## Write a list on your computer
 
-Each list is a text file in `/Lists`, one entry per line, `[ ]` open, `[x]` done:
+A list is a simple text file. Write one thing per line and save it as a `.txt` file,
+e.g. `Shopping.txt`:
+
+```
+Milk
+Bread
+Cheese
+```
+
+Put the file into the folder **`Lists`** on the SD card. That's all: the reader shows it as a
+list. When you tick something, the reader marks it in the file with `[x]`:
 
 ```
 [x] Milk
 [ ] Bread
+[ ] Cheese
 ```
 
-Plain lines (also with `-`, `*` or `1.` in front) work too and become open entries.
-The order always stays as written.
+Good to know:
+- Several things in one line are fine too: `Milk, Bread, Cheese`.
+- For a comma that belongs to the thing, use a dash: `Apples - the red ones`.
+- The order stays as you wrote it.
 
-## Send from a phone or computer
+## Send from your phone or computer
 
-Start **File Transfer** on the reader, then either upload a `.txt` into `/Lists` in the
-browser, or send entries (they are added to the list; use the reader's IP if
-`crosspoint.local` doesn't work):
+**First, every time:** on the reader, start **File Transfer**. Phone or computer and reader must
+be in the same Wi-Fi (or use the reader's **Create Hotspot**).
+
+**Easiest way, no setup:** open the address the reader shows in your browser, go to the
+`Lists` folder and upload your `.txt` file. (A file with the same name replaces that list.)
+
+**Share button on the iPhone, iPad or Mac** (set up once, then two taps):
+
+1. Open the **Shortcuts** app, tap **+**, name it **To X4**.
+2. Add the action **Get Contents of URL** and enter `http://crosspoint.local/api/lists/add`
+3. Tap **Show More**: Method **POST**, Request Body **Form**, add two text fields:
+   - `list` → tap the value, choose **Ask Each Time**
+   - `text` → tap the value, choose **Shortcut Input**
+4. Tap **ⓘ** and turn on **Show in Share Sheet**.
+
+Now select some text anywhere, tap **Share → To X4** and type the list name. The things are
+added to that list (or a new list is made). Nothing is added twice.
+
+If it doesn't work, replace `crosspoint.local` with the address the reader shows (e.g. `192.168.0.25`).
+
+<details>
+<summary>Android</summary>
+
+1. Install the free app [HTTP Shortcuts](https://http-shortcuts.rmy.ch).
+2. Create two variables: **text** (type *Text input*, turn on *Allow receiving value from Share
+   dialog*) and **list** (type *Text input*).
+3. Create a shortcut **To X4**: method **POST**, URL `http://crosspoint.local/api/lists/add`,
+   request body *Form*: `list` = `{list}`, `text` = `{text}`.
+
+Then: select text → **Share → To X4** → type the list name.
+
+</details>
+
+<details>
+<summary>For tinkerers</summary>
 
 ```
 curl -d "list=Shopping" --data-urlencode "text=Milk, Bread" http://crosspoint.local/api/lists/add
 ```
 
-<details>
-<summary>Share menu on iPhone, iPad and Mac (Shortcuts)</summary>
-
-1. New shortcut **To X4**, turn on **Show in Share Sheet**, receive **Text** (*if no input:* **Ask For** Text).
-2. **Get Contents of URL** `http://crosspoint.local/api/lists`, then **Get Dictionary Value** `lists`
-   and **Get Dictionary Value** `name`.
-3. **Add** `New list` to that list, **Choose from List**. If `New list` was chosen, **Ask for Input**
-   "List name". Save the result as variable **List**.
-4. **Get Contents of URL** `http://crosspoint.local/api/lists/add`, Method **POST**,
-   Body **Form**: `list` = *List*, `text` = *Shortcut Input*.
-5. **Get Dictionary Value** `message`, **Show Notification**.
-
-</details>
-
-<details>
-<summary>Share menu on Android (HTTP Shortcuts app)</summary>
-
-1. Install [HTTP Shortcuts](https://http-shortcuts.rmy.ch).
-2. Variables: **text** (text input, multi-line, *Allow receiving value from Share dialog*) and
-   **list** (text input, or *Select* with your list names).
-3. Shortcut **To X4**: **POST** `http://crosspoint.local/api/lists/add`,
-   form parameters `list` = `{list}`, `text` = `{text}`, show the response as toast.
-
-</details>
-
-<details>
-<summary>Web addresses</summary>
-
-| Address | What it does |
-| --- | --- |
-| `GET /api/lists` | All lists: `{"lists":[{"name":"Shopping","open":3,"total":5}]}` |
-| `POST /api/lists/add` | Form fields `list`, `text`. Answer: `{"list","added","reopened","skipped","message"}` |
-
-Like all of CrossPoint's File Transfer, there is no password: use it only in your own Wi-Fi or the
-reader's hotspot. It only ever writes files in `/Lists`.
+`GET /api/lists` lists all lists. Like all of CrossPoint's File Transfer there is no password:
+use it only in your own Wi-Fi or the reader's hotspot. It only ever writes into `/Lists`.
 
 </details>
 
