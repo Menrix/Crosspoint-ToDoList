@@ -1,6 +1,6 @@
-# CrossPoint To-Do List
+# Interactive To-Do Lists for CrossPoint
 
-*Your shopping list on your e-reader – write it, tick it, done. No phone needed.*
+*Not just a list to look at: write, tick and change it right on your e-reader.*
 
 To-do and shopping lists for the [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader)
 firmware.
