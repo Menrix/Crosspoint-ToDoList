@@ -686,17 +686,17 @@ void ListReaderActivity::renderBook() {
     const int totalWidth = renderer.getTextWidth(kSmallFontId, totalText);
     const int openWidth = renderer.getTextWidth(kSmallFontId, openText);
     const int doneWidth = renderer.getTextWidth(kSmallFontId, doneText);
-    const int blockWidth = 3 * (icon + iconGap) + 3 + totalWidth + openWidth + doneWidth + 2 * partGap;
+    const int blockWidth = 3 * (icon + iconGap) + 4 + totalWidth + openWidth + doneWidth + 2 * partGap;
     int x = (paper.paperLeft + paper.right - blockWidth) / 2;  // always the middle of the page
 
     // "All": two boxes stacked, a ticked one behind an empty one.
     {
-      constexpr int shift = 3;
+      constexpr int shift = 4;
       const int bx = x + shift;
       const int by = iconY - shift;
       renderer.drawRect(bx, by, icon + 1, icon + 1, true);
-      renderer.drawLine(bx + 1, by + 1, bx + icon - 1, by + icon - 1, true);
-      renderer.drawLine(bx + icon - 1, by + 1, bx + 1, by + icon - 1, true);
+      renderer.drawLine(bx + 2, by + 2, bx + icon - 2, by + icon - 2, true);  // X with a gap, as in done
+      renderer.drawLine(bx + icon - 2, by + 2, bx + 2, by + icon - 2, true);
       renderer.fillRect(x, iconY, icon + 1, icon + 1, false);
       renderer.drawRect(x, iconY, icon + 1, icon + 1, true);
       x += icon + shift + iconGap;
