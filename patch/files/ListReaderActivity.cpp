@@ -675,7 +675,7 @@ void ListReaderActivity::renderBook() {
     snprintf(openText, sizeof(openText), "%d %s", openCount, tr(STR_TODO_COUNT_OPEN));
     snprintf(doneText, sizeof(doneText), "%d %s", doneCount, tr(STR_TODO_COUNT_DONE));
     const int smallAscender = renderer.getFontAscenderSize(kSmallFontId);
-    const int textTop = std::max(top + 2, titleBaseline - headAscender - 6 - smallAscender);
+    const int textTop = std::max(top + 1, titleBaseline - headAscender - 9 - smallAscender);
     // Icons as tall as the digits, centred on them (digits reach 63 % of the ascender above the
     // baseline in this font, so their middle is at 31 %).
     const int icon = std::max(9, smallAscender * 60 / 100);
