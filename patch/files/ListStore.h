@@ -51,10 +51,20 @@ inline bool saveList(const std::string& path, const std::vector<Item>& items) {
   return true;
 }
 
-// First start: no /Lists folder yet -> create it with an empty "TO DO" list, so there is always
-// a list to open and start writing in on the reader itself. Names are in capitals, like the headline.
+// True if /Lists holds at least one list.
+inline bool hasAnyList() {
+  if (!Storage.exists(kListsDir)) return false;
+  for (const String& file : Storage.listFiles(kListsDir, 200)) {
+    if (isListPath(std::string(kListsDir) + "/" + file.c_str())) return true;
+  }
+  return false;
+}
+
+// There is always at least one list, because new lists are made from inside a list (tap the
+// headline). On first start, and whenever the last list was deleted (on the reader, in the file
+// browser or on the computer), an empty "TO DO" list is made. Names are in capitals, like the headline.
 inline void ensureStarterList() {
-  if (Storage.exists(kListsDir)) return;
+  if (hasAnyList()) return;
   Storage.ensureDirectoryExists(kListsDir);
   Storage.writeFile(pathFor("TO DO").c_str(), String(""));
 }

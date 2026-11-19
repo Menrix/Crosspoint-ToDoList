@@ -192,6 +192,7 @@ void ListReaderActivity::confirmDeleteList() {
     }
     if (RECENT_BOOKS.removeByPath(bookPath)) RECENT_BOOKS.saveToFile();
     todolist::setDoneHidden(listName, false);  // also forgets lists that no longer exist
+    todolist::ensureStarterList();              // was it the last one? then a fresh "TO DO"
     library::markLibraryIndexDirty();
     activityManager.goHome();
   });
