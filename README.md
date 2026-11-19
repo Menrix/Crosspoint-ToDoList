@@ -27,9 +27,11 @@ Get the file for your device from **[Releases](../../releases)**:
 Copy it to the SD card and use **Settings → SD Card Firmware Update**. Later updates:
 **Settings → Check for Updates**.
 
-## Use
+## Make and use lists right on the reader
 
-Open a list like a book. A first list, **TO DO**, is already there.
+No phone or computer needed: create lists, write, tick and delete everything on the reader.
+Open a list like a book; a first list, **TO DO**, is already there. Tap its headline for
+**new list**.
 
 | What | X4 Pro (touch) | X3 / X4 (buttons) |
 | --- | --- | --- |
@@ -45,6 +47,9 @@ Open a list like a book. A first list, **TO DO**, is already there.
   asks first.
 
 ## Write a list on your computer
+
+<details>
+<summary>Show</summary>
 
 A list is a simple text file. Write one thing per line and save it as a `.txt` file,
 e.g. `Shopping.txt`:
@@ -68,6 +73,8 @@ Good to know:
 - Several things in one line are fine too: `Milk, Bread, Cheese`.
 - For a comma that belongs to the thing, use a dash: `Apples - the red ones`.
 - The order stays as you wrote it.
+
+</details>
 
 ## Send from your phone or computer
 
