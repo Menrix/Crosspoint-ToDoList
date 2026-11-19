@@ -598,12 +598,8 @@ void ListReaderActivity::ensureNamedCover() {
 
   const int* box = todolist::kTitleBox;
   const int boxWidth = box[2] - box[0] - 8;
-  std::string title = todolist::toHeadline(listName);
-  int font = kTitleFontId;
-  if (renderer.getTextWidth(font, title.c_str()) > boxWidth) {
-    font = kListFontId;
-    title = renderer.truncatedText(font, title.c_str(), boxWidth);
-  }
+  const int font = kTitleFontId;  // always the big writing; a long name ends with "..."
+  const std::string title = renderer.truncatedText(font, todolist::toHeadline(listName).c_str(), boxWidth);
   const int top = box[3] - 14 - renderer.getFontAscenderSize(font);
   for (int ox = 0; ox < 3; ox++) {  // felt-pen strokes, like the headline
     renderer.drawText(font, box[0] + 4 + ox, top, title.c_str(), true);

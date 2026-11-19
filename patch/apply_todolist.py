@@ -176,6 +176,17 @@ def main() -> None:
                        "  if (!tipsHidden && kbRect.y - tipsTop >= tipsHeight) {\n", "keyboard tips")
     kb_cpp.write_text(src, encoding="utf-8")
 
+    # 3d) Library: a list changes size with every tick, so the "recent" rows must not match it by
+    # size, or the list shows twice (once pinned on top, once in the list). Lists match by path.
+    lib = root / "src" / "activities" / "library" / "LibraryListActivity.cpp"
+    src = lib.read_text(encoding="utf-8")
+    src = replace_once(src, '#include "RecentBooksStore.h"\n',
+                       '#include "RecentBooksStore.h"\n#include "activities/reader/ListPath.h"\n', "library include")
+    src = replace_once(src, '      if (Storage.openFileForRead("LIB", path.c_str(), file)) {\n',
+                       '      if (!todolist::isListPath(path) && Storage.openFileForRead("LIB", path.c_str(), file)) {\n',
+                       "library recent lists")
+    lib.write_text(src, encoding="utf-8")
+
     # 4) Texts. Languages without their own entry fall back to English.
     translations = root / "lib" / "I18n" / "translations"
     for file_name, entries in STRINGS.items():
