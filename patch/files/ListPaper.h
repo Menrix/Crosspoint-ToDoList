@@ -255,14 +255,31 @@ inline void paintEye(const int cx, const int cy, const bool closed, Px&& px) {
     return static_cast<int>(std::lround(depth * std::cos(x / static_cast<double>(half) * halfPi)));
   };
   // Five lashes along a lid, pointing away from a centre point (cx, cy + from).
-  const auto lashes = [&](const double depth, const int from, const int length) {
-    for (const int lx : {-12, -6, 0, 6, 12}) {
-      const int y0 = cy + curve(lx, depth);
-      const double vx = lx;
-      const double vy = y0 - (cy + from);
-      const double n = std::sqrt(vx * vx + vy * vy);
-      line(px, cx + lx, y0, cx + lx + static_cast<int>(std::lround(vx / n * length)),
-           y0 + static_cast<int>(std::lround(vy / n * length)), 2);
+  // Five lashes spread evenly along a lid curve y = cy + base + curve(x, depth): equal steps
+  // along the curve, fanning out in equal angles (0, 30 and 60 degrees from straight up/down),
+  // like a hand-drawn eye. `up` = lashes point upwards.
+  const auto lashes = [&](const int base, const double depth, const bool up) {
+    constexpr int kSteps = 64;
+    double arc[kSteps + 1];
+    arc[0] = 0;
+    for (int i = 1; i <= kSteps; i++) {  // length along the curve
+      const double x0 = -half + 2.0 * half * (i - 1) / kSteps;
+      const double x1 = -half + 2.0 * half * i / kSteps;
+      const double y0 = depth * std::cos(x0 / half * halfPi);
+      const double y1 = depth * std::cos(x1 / half * halfPi);
+      arc[i] = arc[i - 1] + std::sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+    }
+    const double angles[5] = {-60, -30, 0, 30, 60};
+    for (int k = 0; k < 5; k++) {
+      const double target = arc[kSteps] * (0.14 + 0.18 * k);  // 14 %, 32 %, 50 %, 68 %, 86 %
+      int i = 1;
+      while (i < kSteps && arc[i] < target) i++;
+      const int lx = static_cast<int>(std::lround(-half + 2.0 * half * i / kSteps));
+      const int y0 = cy + base + curve(lx, depth);
+      const double a = angles[k] * halfPi / 90;
+      const int ex = cx + lx + static_cast<int>(std::lround(std::sin(a) * 6));
+      const int ey = y0 + static_cast<int>(std::lround(std::cos(a) * 6)) * (up ? -1 : 1);
+      line(px, cx + lx, y0, ex, ey, 2);
     }
   };
   if (!closed) {
@@ -285,7 +302,7 @@ inline void paintEye(const int cx, const int cy, const bool closed, Px&& px) {
         if (x * x + y * y <= 1) px(cx + 3 + x, cy - 5 + y, false);
       }
     }
-    lashes(-9, 14, 5);
+    lashes(0, -9, true);
   } else {
     // closed: the lid as a curve like a smile, lashes hanging down
     int last = cy;
@@ -294,14 +311,7 @@ inline void paintEye(const int cx, const int cy, const bool closed, Px&& px) {
       if (x > -half) line(px, cx + x - 1, last, cx + x, y, 2);
       last = y;
     }
-    for (const int lx : {-12, -6, 0, 6, 12}) {
-      const int y0 = cy - 3 + curve(lx, 7);
-      const double vx = lx;
-      const double vy = y0 - (cy - 18);
-      const double n = std::sqrt(vx * vx + vy * vy);
-      line(px, cx + lx, y0, cx + lx + static_cast<int>(std::lround(vx / n * 5)),
-           y0 + static_cast<int>(std::lround(vy / n * 5)), 2);
-    }
+    lashes(-3, 7, false);
   }
 }
 
