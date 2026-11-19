@@ -166,8 +166,9 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6  # only for the file VERSION, kept apart from the firmware files
         with:
+          path: repo
           sparse-checkout: VERSION
           sparse-checkout-cone-mode: false
 
@@ -186,7 +187,7 @@ jobs:
             exit 1
           fi
           # The add-on's own version (file VERSION in this repository); below 1.0 it is a beta.
-          addon="$(tr -d '[:space:]' < VERSION)"
+          addon="$(tr -d '[:space:]' < repo/VERSION)"
           case "$addon" in 0.*) addon="$addon beta" ;; esac
           notes="To-Do Lists ${addon} for CrossPoint ${VERSION} (build ${FULL}).
 
