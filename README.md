@@ -56,7 +56,8 @@ new empty **TO DO** appears.
 - Turning past the last page opens the next list, turning back before the first page the
   previous one (lists in name order).
 - The home screen shows one list, the one used last, with a picture of the list. From
-  there, swipe through all your lists.
+  there, swipe through all your lists. The picture is made once; to update it, open
+  **rename list** and confirm the name.
 - A deleted entry can be brought back with **undo** in the bottom line. Deleting a whole list
   asks first.
 

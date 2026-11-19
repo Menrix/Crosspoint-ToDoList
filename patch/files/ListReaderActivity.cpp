@@ -345,7 +345,12 @@ void ListReaderActivity::openKeyboard(const Action action, const int item) {
       }
       case Action::Rename: {
         const std::string name = todolist::sanitizeName(todolist::toHeadline(typed));
-        if (name.empty() || name == listName) break;
+        if (name.empty()) break;
+        if (name == listName) {  // same name confirmed: the home-screen picture is made afresh
+          Storage.remove(todolist::namedCoverPath(bookPath).c_str());
+          coverDirty = true;
+          break;
+        }
         if (!todolist::renameList(listName, name)) {
           message = tr(STR_TODO_NAME_TAKEN);
           break;
