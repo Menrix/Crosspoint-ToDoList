@@ -682,7 +682,7 @@ void ListReaderActivity::renderBook() {
     const int baseline = textTop + smallAscender;
     const int iconY = baseline - smallAscender * 31 / 100 - icon / 2;
     constexpr int iconGap = 5;
-    constexpr int partGap = 16;
+    constexpr int partGap = 19;  // space between "9 total", "5 open" and "4 done"
     const int totalWidth = renderer.getTextWidth(kSmallFontId, totalText);
     const int openWidth = renderer.getTextWidth(kSmallFontId, openText);
     const int doneWidth = renderer.getTextWidth(kSmallFontId, doneText);
