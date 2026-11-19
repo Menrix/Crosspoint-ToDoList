@@ -662,7 +662,7 @@ void ListReaderActivity::renderBook() {
     renderer.drawText(headFont, paper.textX + ox, titleBaseline - headAscender, headline.c_str(), true);
   }
 
-  // Above the headline, small and in the middle of the page (a long name is never covered):
+  // Above the headline, small and starting where it starts (a long name is never covered):
   // how many entries there are, how many are open and how many done:  9 total  [] 5 open  [x] 4 done
   // The done number also tells how many are hidden when checked entries are hidden.
   {
@@ -686,8 +686,7 @@ void ListReaderActivity::renderBook() {
     const int totalWidth = renderer.getTextWidth(kSmallFontId, totalText);
     const int openWidth = renderer.getTextWidth(kSmallFontId, openText);
     const int doneWidth = renderer.getTextWidth(kSmallFontId, doneText);
-    const int blockWidth = 3 * (icon + iconGap) + 4 + totalWidth + openWidth + doneWidth + 2 * partGap;
-    int x = (paper.paperLeft + paper.right - blockWidth) / 2;  // always the middle of the page
+    int x = paper.textX;  // starts where the headline starts
 
     // "All": two boxes stacked, a ticked one behind an empty one.
     {
