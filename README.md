@@ -109,25 +109,6 @@ reader's hotspot. It only ever writes files in `/Lists`.
 Every night a GitHub Action adds this to the latest official CrossPoint release and publishes
 the firmware under Releases.
 
-<details>
-<summary>Files</summary>
-
-| File | Content |
-| --- | --- |
-| `patch/apply_todolist.py` | Adds everything to a CrossPoint source tree |
-| `patch/files/ListCore.h` | List rules: reading, saving, adding, page layout |
-| `patch/files/ListStore.h` | Reading and writing lists on the SD card |
-| `patch/files/ListPath.h` | Which files are lists, which cover each gets |
-| `patch/files/ListPaper.h` | The notepad look |
-| `patch/files/ListCover.h`, `ListCoverImages.h` | The five home-screen covers |
-| `patch/files/ListReaderActivity.*` | The list screen |
-| `patch/files/ListsWeb.h` | The web addresses |
-| `patch/files/fonts/` | The handwriting font |
-| `tests/test_listcore.cpp` | Tests, run before every build |
-| `tools/` | PC preview and the cover maker |
-
-</details>
-
 Made with the help of Claude.
 
 ## License
