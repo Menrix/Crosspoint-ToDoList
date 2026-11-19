@@ -54,6 +54,12 @@ static void testMerge() {
   CHECK(merge(items, commasToLines("Eier; Butter;Milch")).added == 2);
   CHECK(items.size() == 5 && items[3].text == "Eier" && items[4].text == "Butter");
 
+  // Commas and semicolons split everywhere, also in files; a decimal comma stays.
+  items = parse("Milch, brot; wurst\n[x] Tee, Kaffee\n1,5 kg Mehl\nAepfel - die roten\n");
+  CHECK(serialize(items) == "[ ] Milch\n[ ] brot\n[ ] wurst\n[x] Tee\n[x] Kaffee\n[ ] 1,5 kg Mehl\n[ ] Aepfel - die roten\n");
+  items = parse("Milch\nbtrot\nwurst\n");
+  CHECK(serialize(items) == "[ ] Milch\n[ ] btrot\n[ ] wurst\n");
+
   // Editing on the reader: the first part replaces the entry, the rest go right below it.
   items = parse("[ ] A\n[x] B\n[ ] C\n");
   CHECK(applyEdit(items, 0, "A1, X; Y, C"));

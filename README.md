@@ -69,7 +69,11 @@ You don't have to write the boxes yourself. A list typed or pasted like this wor
 ```
 
 Every line becomes an open entry; the dashes, dots and numbers in front are dropped and empty
-lines are left out.
+lines are left out. The order always stays as written, also when you tick entries.
+
+**Commas and semicolons separate entries everywhere** (on the reader, in files, when sending):
+`Milk, Bread; Cheese` is three entries. A comma between digits stays (`1,5 kg flour`). For a
+comma inside one entry, write a dash instead: `Apples - the red ones`.
 
 ## Send entries from a phone or computer
 

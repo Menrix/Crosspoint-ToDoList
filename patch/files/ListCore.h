@@ -154,6 +154,25 @@ inline bool parseLine(const std::string& raw, Item& out) {
 }
 
 // Whole file (or incoming text) -> entries. Handles a UTF-8 BOM and \n, \r\n or \r line ends.
+// Commas and semicolons separate entries, wherever the text comes from (a file, a phone, the
+// reader's keyboard): "Milk, Bread; Cheese" is three entries. A comma between two digits stays,
+// so "1,5 kg flour" is one entry. For a comma inside an entry, write a dash: "Apples - red ones".
+inline bool isSeparatorAt(const std::string& text, const size_t i) {
+  const char c = text[i];
+  if (c == ';') return true;
+  if (c != ',') return false;
+  const auto digit = [](const char d) { return d >= '0' && d <= '9'; };
+  return !(i > 0 && i + 1 < text.size() && digit(text[i - 1]) && digit(text[i + 1]));
+}
+
+inline std::string commasToLines(const std::string& typed) {
+  std::string out = typed;
+  for (size_t i = 0; i < out.size(); i++) {
+    if (isSeparatorAt(typed, i)) out[i] = '\n';
+  }
+  return out;
+}
+
 inline std::vector<Item> parse(const std::string& text) {
   std::vector<Item> items;
   size_t pos = 0;
@@ -164,7 +183,21 @@ inline std::vector<Item> parse(const std::string& text) {
   std::string line;
   auto flush = [&]() {
     Item item;
-    if (parseLine(line, item)) items.push_back(std::move(item));
+    if (parseLine(line, item)) {
+      // One line may hold several entries ("[x] Milk, Bread"); each keeps the line's tick.
+      const std::string parts = commasToLines(item.text);
+      size_t start = 0;
+      while (start <= parts.size()) {
+        size_t end = parts.find('\n', start);
+        if (end == std::string::npos) end = parts.size();
+        Item part;
+        if (parseLine(parts.substr(start, end - start), part)) {
+          part.done = item.done;
+          items.push_back(std::move(part));
+        }
+        start = end + 1;
+      }
+    }
     line.clear();
   };
   for (; pos < text.size(); pos++) {
@@ -232,16 +265,6 @@ inline AddResult merge(std::vector<Item>& items, const std::string& incoming, si
     }
   }
   return result;
-}
-
-// Text typed on the reader's keyboard (one line only): commas or semicolons separate the items.
-// "Milk, Bread ; Cheese" -> "Milk\nBread\nCheese". merge() then cleans every part as usual.
-inline std::string commasToLines(const std::string& typed) {
-  std::string out = typed;
-  for (char& c : out) {
-    if (c == ',' || c == ';') c = '\n';
-  }
-  return out;
 }
 
 // Editing an entry on the reader. The first part replaces the entry's text; any further parts
