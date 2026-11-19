@@ -62,14 +62,24 @@ new empty **TO DO** appears.
 <details>
 <summary>Show</summary>
 
-A list is a simple text file. Write one thing per line and save it as a `.txt` file,
-e.g. `Shopping.txt`:
+A list is a simple text file, saved as `.txt` (e.g. `Shopping.txt`). Write it the way you like:
+
+One thing per line:
 
 ```
 Milk
 Bread
-Cheese
+Butter
 ```
+
+Or all in one line:
+
+```
+Milk, Bread, Butter
+```
+
+Both give the same three entries. Dashes, stars or numbers in front (`- Milk`, `1. Milk`) are
+fine too.
 
 Put the file into the folder **`Lists`** on the SD card. That's all: the reader shows it as a
 list.
@@ -78,7 +88,6 @@ You never have to type boxes or marks yourself. The reader keeps track of what i
 itself (it adds `[ ]` and `[x]` in the file), so don't be surprised if you open the file later.
 
 Good to know:
-- Several things in one line are fine too: `Milk, Bread, Cheese`.
 - For a comma that belongs to the thing, use a dash: `Apples - the red ones`.
 - The order stays as you wrote it.
 
