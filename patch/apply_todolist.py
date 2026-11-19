@@ -40,7 +40,7 @@ STRINGS = {
         "STR_TODO_RENAME": "rename list",
         "STR_TODO_DELETE_LIST": "delete list",
         "STR_TODO_SUBTITLE_ONE": "To-do list",
-        "STR_TODO_SUBTITLE_MANY": "to-do lists, swipe to browse",
+        "STR_TODO_SUBTITLE_MANY": "open to switch",
         "STR_TODO_CHECK_ALL": "check all",
         "STR_TODO_UNCHECK_ALL": "uncheck all",
         "STR_TODO_DELETE_ALL": "delete all",
@@ -238,7 +238,7 @@ def main() -> None:
                        "  todolist::ensureStarterList();  // Crosspoint-ToDoList: there is always one list,\n"
                        "  if (todolist::starterJustCreated()) {  // and a fresh one shows on the home screen\n"
                        "    todolist::starterJustCreated() = false;\n"
-                       "    RECENT_BOOKS.addBook(todolist::pathFor(\"TO DO\"), \"TO DO\", todolist::listsSubtitle(), \"\");\n"
+                       "    RECENT_BOOKS.addBook(todolist::pathFor(\"TO DO\"), \"TO DO\", todolist::listsSubtitle(todolist::pathFor(\"TO DO\")), \"\");\n"
                        "    RECENT_BOOKS.saveToFile();\n"
                        "  }\n",
                        "home starter list")

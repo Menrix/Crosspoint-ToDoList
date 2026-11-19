@@ -65,7 +65,7 @@ class ListReaderActivity final : public ReaderActivity {
 
   bool loadBook() override;
   std::string getBookTitle() const override { return listName; }
-  std::string getBookAuthor() const override { return todolist::listsSubtitle(); }
+  std::string getBookAuthor() const override { return todolist::listsSubtitle(bookPath); }
   void renderBook() override;
   bool isAtEndOfBook() const override { return false; }
 

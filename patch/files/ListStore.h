@@ -79,14 +79,20 @@ inline std::vector<std::string> allListPaths() {
 }
 
 // The small line under a list's name on the home screen and in the library, where a book shows
-// its author: how many lists there are, and that a swipe leads through them.
-inline std::string listsSubtitle() {
-  const size_t count = allListPaths().size();
+// its author: "List 2 of 4 · open to switch" (lists in name order), or "To-do list" if it is the
+// only one.
+inline std::string listsSubtitle(const std::string& listPath) {
+  const std::vector<std::string> paths = allListPaths();
+  int at = 0;
+  for (size_t i = 0; i < paths.size(); i++) {
+    if (detail::foldKey(paths[i]) == detail::foldKey(listPath)) at = static_cast<int>(i) + 1;
+  }
   char text[64];
-  if (count <= 1) {
+  if (paths.size() <= 1 || at == 0) {
     snprintf(text, sizeof(text), "%s", tr(STR_TODO_SUBTITLE_ONE));
   } else {
-    snprintf(text, sizeof(text), "%u %s", static_cast<unsigned>(count), tr(STR_TODO_SUBTITLE_MANY));
+    snprintf(text, sizeof(text), "List %d of %d \u00B7 %s", at, static_cast<int>(paths.size()),
+             tr(STR_TODO_SUBTITLE_MANY));
   }
   return text;
 }
