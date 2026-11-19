@@ -7,7 +7,7 @@ firmware.
 
 - **Create, edit, delete** – right on the reader
 - **Tick & undo**
-- **No duplicates**
+- **Smart lists** – nothing is added twice
 - **Hide / show checked**
 - **Swipe between lists**
 - **Notepad look & covers**
