@@ -158,8 +158,8 @@ use it only in your own Wi-Fi or the reader's hotspot. It only ever writes into 
 
 - [Crosspoint-Dogear](https://github.com/Menrix/Crosspoint-Dogear): bookmarks show as a folded
   page corner.
-- [Crosspoint-Addons](https://github.com/Menrix/Crosspoint-Addons): **all add-ons in one
-  firmware**. A growing collection; install this one if you want more than one add-on.
+- [Crosspoint-Addons](https://github.com/Menrix/Crosspoint-Addons): **all my add-ons in one
+  firmware**. A growing collection; install this one if you want more than one of them.
 
 ## How it is built
 
