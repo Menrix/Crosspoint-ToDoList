@@ -69,7 +69,8 @@ Good to know:
 - For a comma that belongs to the thing, use a dash: `Apples - the red ones`.
 - The order stays as you wrote it.
 
-## Send from your phone or computer
+<details>
+<summary><b>Send from your phone or computer</b></summary>
 
 **First, every time:** on the reader, start **File Transfer**. Phone or computer and reader must
 be in the same Wi-Fi (or use the reader's **Create Hotspot**).
@@ -123,14 +124,22 @@ use it only in your own Wi-Fi or the reader's hotspot. It only ever writes into 
 
 </details>
 
-## How it is built
+</details>
+
+<details>
+<summary><b>How it is built</b></summary>
 
 Every night a GitHub Action adds this to the latest official CrossPoint release and publishes
 the firmware under Releases.
 
-Made with the help of Claude.
+</details>
 
-## License
+<details>
+<summary><b>License</b></summary>
 
 MIT, like CrossPoint. Font [Patrick Hand](https://fonts.google.com/specimen/Patrick+Hand)
 © Patrick Wagesreiter, SIL Open Font License 1.1.
+
+</details>
+
+Made with the help of Claude.
