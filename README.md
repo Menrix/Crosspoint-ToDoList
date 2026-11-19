@@ -138,22 +138,12 @@ use it only in your own Wi-Fi or the reader's hotspot. It only ever writes into 
 
 ## How it is built
 
-<details>
-<summary>Show</summary>
-
 Every night a GitHub Action adds this to the latest official CrossPoint release and publishes
 the firmware under Releases.
 
-</details>
-
 ## License
-
-<details>
-<summary>Show</summary>
 
 MIT, like CrossPoint. Font [Patrick Hand](https://fonts.google.com/specimen/Patrick+Hand)
 © Patrick Wagesreiter, SIL Open Font License 1.1.
-
-</details>
 
 Made with the help of Claude.
