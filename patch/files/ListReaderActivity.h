@@ -11,7 +11,8 @@
 //    long press an item             small buttons: edit / delete (delete has an undo)
 //    tap or hold the headline       small buttons: new list / rename / delete list (asks first)
 //    reader-menu gesture            hide / show checked items (remembered per list)
-//    swipe or tap elsewhere         turn pages, as set in Settings
+//    swipe or tap elsewhere         turn pages, as set in Settings; past the last page comes
+//                                   the next list, back before the first the previous one
 //  X3 / X4 (keys):
 //    Left/Right select, Confirm ticks, side keys turn pages,
 //    Confirm held opens a small menu with all of the above.
@@ -71,6 +72,7 @@ class ListReaderActivity final : public ReaderActivity {
   void runAction(Action action, int pageEntry);
   void openKeyboard(Action action, int item);
   void confirmDeleteList();
+  bool openNeighbourList(bool forward);
   void drawOverlay(bool touch);
   bool handleOverlayInput(bool touch);
 

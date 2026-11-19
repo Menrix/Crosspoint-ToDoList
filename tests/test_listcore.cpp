@@ -172,14 +172,16 @@ static void testPaperAndCover() {
     black += b ? 1 : 0;
   });
   CHECK(black > 1000);
-  // Five covers, each a complete 300x450 1-bit BMP (header 62 bytes + rows of 40 bytes).
+  // Five covers, each a 480x800 PNG (3:5, the shape of every cover thumbnail).
   for (int i = 0; i < kCoverCount; i++) {
     const CoverImage& c = coverImage(i);
-    CHECK(c.size == 62u + 40u * 450u);
-    CHECK(c.data[0] == 'B' && c.data[1] == 'M');
-    CHECK(c.data[28] == 1);  // bits per pixel
+    CHECK(c.size > 1000u && c.size < 40000u);
+    CHECK(c.data[1] == 'P' && c.data[2] == 'N' && c.data[3] == 'G');
+    const uint32_t w = (c.data[16] << 24) | (c.data[17] << 16) | (c.data[18] << 8) | c.data[19];
+    const uint32_t h = (c.data[20] << 24) | (c.data[21] << 16) | (c.data[22] << 8) | c.data[23];
+    CHECK(w == 480u && h == 800u);
   }
-  CHECK(coverPath(0) == "/.crosspoint/todolist/cover_1.bmp");
+  CHECK(coverPath(0) == "/.crosspoint/todolist/cover_1.png");
   // A list keeps its cover whatever the letter case; different lists use different covers.
   CHECK(coverIndexFor("/Lists/Einkauf.txt") == coverIndexFor("/lists/EINKAUF.TXT"));
   bool seen[kCoverCount] = {};

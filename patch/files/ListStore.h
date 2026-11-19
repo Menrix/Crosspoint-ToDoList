@@ -6,6 +6,7 @@
 #include <Logging.h>
 #include <WString.h>
 
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <vector>
@@ -58,6 +59,27 @@ inline bool hasAnyList() {
     if (isListPath(std::string(kListsDir) + "/" + file.c_str())) return true;
   }
   return false;
+}
+
+// All lists, in the order the reader steps through them: by name, upper/lower case ignored.
+inline std::vector<std::string> allListPaths() {
+  std::vector<std::string> paths;
+  if (!Storage.exists(kListsDir)) return paths;
+  for (const String& file : Storage.listFiles(kListsDir, 200)) {
+    std::string path = std::string(kListsDir) + "/" + file.c_str();
+    if (isListPath(path)) paths.push_back(std::move(path));
+  }
+  std::sort(paths.begin(), paths.end(), [](const std::string& a, const std::string& b) {
+    return detail::foldKey(a) < detail::foldKey(b);
+  });
+  return paths;
+}
+
+// Set before opening the previous list by turning back past its first page: that list then
+// opens on its last page, like going back in a book.
+inline bool& openOnLastPage() {
+  static bool flag = false;
+  return flag;
 }
 
 // There is always at least one list, because new lists are made from inside a list (tap the
@@ -126,6 +148,12 @@ inline void ensureCover() {
   }
   Storage.ensureDirectoryExists(kCoverDir);
   for (int i = 0; i < kCoverCount; i++) {
+    // Earlier builds used BMP covers, which the home screen showed cut off; now they are PNGs.
+    const std::string oldBmp = std::string(kCoverDir) + "/cover_" + std::to_string(i + 1) + ".bmp";
+    if (Storage.exists(oldBmp.c_str())) {
+      Storage.remove(oldBmp.c_str());
+      changed = true;
+    }
     const CoverImage& image = coverImage(i);
     const std::string path = coverPath(i);
     if (Storage.exists(path.c_str())) {

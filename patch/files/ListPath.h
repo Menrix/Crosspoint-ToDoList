@@ -37,7 +37,7 @@ inline bool isListPath(const std::string& path) {
 }
 
 inline std::string coverPath(const int index) {
-  return std::string(kCoverDir) + "/cover_" + std::to_string(index + 1) + ".bmp";
+  return std::string(kCoverDir) + "/cover_" + std::to_string(index + 1) + ".png";
 }
 
 // Each list keeps one of the five covers, picked from its file name (letter case ignored),

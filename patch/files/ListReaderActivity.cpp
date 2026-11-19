@@ -51,6 +51,26 @@ bool ListReaderActivity::loadBook() {
   listName = todolist::nameFromPath(bookPath);
   if (!todolist::loadList(bookPath, items)) return false;
   hideDone = todolist::isDoneHidden(listName);
+  if (todolist::openOnLastPage()) {
+    todolist::openOnLastPage() = false;
+    currentPage = 1 << 20;  // the last page (clamped on render)
+  }
+  return true;
+}
+
+// Turning past the last page opens the next list, turning back before the first page the
+// previous one (on its last page). Lists are in name order; the first and the last list stop there.
+bool ListReaderActivity::openNeighbourList(const bool forward) {
+  const std::vector<std::string> paths = todolist::allListPaths();
+  int at = -1;
+  for (size_t i = 0; i < paths.size(); i++) {
+    if (todolist::detail::foldKey(paths[i]) == todolist::detail::foldKey(bookPath)) at = static_cast<int>(i);
+  }
+  if (at < 0) return false;
+  const int to = at + (forward ? 1 : -1);
+  if (to < 0 || to >= static_cast<int>(paths.size())) return false;
+  todolist::openOnLastPage() = !forward;
+  activityManager.goToReader(paths[to]);
   return true;
 }
 
@@ -467,6 +487,10 @@ void ListReaderActivity::loop() {
   }
   if (!prev && !next) return;
   const bool changed = pageTurn(!prev);
+  if (!changed && overlay == Overlay::None && openNeighbourList(!prev)) {
+    if (touchTurn.prev || touchTurn.next) haptic_feedback::touchAction();
+    return;
+  }
   notePageTurn(!prev, changed);
   if (changed && (touchTurn.prev || touchTurn.next)) haptic_feedback::touchAction();
   if (changed) requestUpdate();
