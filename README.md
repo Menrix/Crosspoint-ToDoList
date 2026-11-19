@@ -60,7 +60,16 @@ Each list is a text file in **`/Lists`**, one entry per line. `[ ]` is open, `[x
 [ ] Bread
 ```
 
-Lines without `[ ]` count as open. Bullets (`-`, `*`, `•`, `1.`) and empty lines are tidied up.
+You don't have to write the boxes yourself. A list typed or pasted like this works too:
+
+```
+- Milk
+* Bread
+1. Cheese
+```
+
+Every line becomes an open entry; the dashes, dots and numbers in front are dropped and empty
+lines are left out.
 
 ## Send entries from a phone or computer
 
