@@ -249,33 +249,58 @@ inline void paintFooterRule(const Geometry& g, Px&& px) {
 template <typename Px>
 inline void paintEye(const int cx, const int cy, const bool closed, Px&& px) {
   const double halfPi = 1.5707963267948966;
+  constexpr int half = 16;  // half the eye's width
+  // A lid curve: y offset from cy at x (cos shape, 0 at both corners).
+  const auto curve = [&](const int x, const double depth) {
+    return static_cast<int>(std::lround(depth * std::cos(x / static_cast<double>(half) * halfPi)));
+  };
+  // Five lashes along a lid, pointing away from a centre point (cx, cy + from).
+  const auto lashes = [&](const double depth, const int from, const int length) {
+    for (const int lx : {-12, -6, 0, 6, 12}) {
+      const int y0 = cy + curve(lx, depth);
+      const double vx = lx;
+      const double vy = y0 - (cy + from);
+      const double n = std::sqrt(vx * vx + vy * vy);
+      line(px, cx + lx, y0, cx + lx + static_cast<int>(std::lround(vx / n * length)),
+           y0 + static_cast<int>(std::lround(vy / n * length)), 2);
+    }
+  };
   if (!closed) {
-    // almond outline and a round pupil
-    int lastUp = cy - 0;
+    // open: almond outline, a big round pupil with a light spot, lashes on top
+    int lastUp = cy;
     int lastDown = cy;
-    for (int x = -15; x <= 15; x++) {
-      const double c = std::cos(x / 15.0 * halfPi);
-      const int up = cy - static_cast<int>(std::lround(9 * c));
-      const int down = cy + static_cast<int>(std::lround(8 * c));
-      if (x > -15) {
-        line(px, cx + x - 1, lastUp, cx + x, up, 3);
-        line(px, cx + x - 1, lastDown, cx + x, down, 3);
+    for (int x = -half; x <= half; x++) {
+      const int up = cy - curve(x, 10);
+      const int down = cy + curve(x, 7);
+      if (x > -half) {
+        line(px, cx + x - 1, lastUp, cx + x, up, 2);
+        line(px, cx + x - 1, lastDown, cx + x, down, 2);
       }
       lastUp = up;
       lastDown = down;
     }
-    fillCircle(px, cx, cy, 5);
+    fillCircle(px, cx, cy - 2, 7);
+    for (int y = -1; y <= 1; y++) {  // the light spot
+      for (int x = -1; x <= 1; x++) {
+        if (x * x + y * y <= 1) px(cx + 3 + x, cy - 5 + y, false);
+      }
+    }
+    lashes(-10, 14, 5);
   } else {
-    // the closed lid: a curve like a smile, with three short lashes
+    // closed: the lid as a curve like a smile, lashes hanging down
     int last = cy;
-    for (int x = -15; x <= 15; x++) {
-      const int y = cy - 2 + static_cast<int>(std::lround(4 * std::cos(x / 15.0 * halfPi)));
-      if (x > -15) line(px, cx + x - 1, last, cx + x, y, 3);
+    for (int x = -half; x <= half; x++) {
+      const int y = cy - 3 + curve(x, 7);
+      if (x > -half) line(px, cx + x - 1, last, cx + x, y, 2);
       last = y;
     }
-    for (const int lx : {-9, 0, 9}) {
-      const int y0 = cy - 1 + static_cast<int>(std::lround(4 * std::cos(lx / 15.0 * halfPi)));
-      line(px, cx + lx, y0, cx + lx + lx / 4, y0 + 7, 2);
+    for (const int lx : {-12, -6, 0, 6, 12}) {
+      const int y0 = cy - 3 + curve(lx, 7);
+      const double vx = lx;
+      const double vy = y0 - (cy - 18);
+      const double n = std::sqrt(vx * vx + vy * vy);
+      line(px, cx + lx, y0, cx + lx + static_cast<int>(std::lround(vx / n * 5)),
+           y0 + static_cast<int>(std::lround(vy / n * 5)), 2);
     }
   }
 }
