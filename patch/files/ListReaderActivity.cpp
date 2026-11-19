@@ -663,7 +663,7 @@ void ListReaderActivity::renderBook() {
   }
 
   // Above the headline, small and in the middle of the page (a long name is never covered):
-  // how many entries there are, how many are open and how many done:  = 9 total  [] 5 open  [x] 4 done
+  // how many entries there are, how many are open and how many done:  9 total  [] 5 open  [x] 4 done
   // The done number also tells how many are hidden when checked entries are hidden.
   {
     const int openCount = todolist::countOpen(items);
@@ -686,15 +686,21 @@ void ListReaderActivity::renderBook() {
     const int totalWidth = renderer.getTextWidth(kSmallFontId, totalText);
     const int openWidth = renderer.getTextWidth(kSmallFontId, openText);
     const int doneWidth = renderer.getTextWidth(kSmallFontId, doneText);
-    const int blockWidth = 3 * (icon + iconGap) + totalWidth + openWidth + doneWidth + 2 * partGap;
+    const int blockWidth = 3 * (icon + iconGap) + 3 + totalWidth + openWidth + doneWidth + 2 * partGap;
     int x = (paper.paperLeft + paper.right - blockWidth) / 2;  // always the middle of the page
 
-    // "All": three lines, the lower one shorter, like a little list.
-    for (int i = 0; i < 3; i++) {
-      const int ly = iconY + i * (icon - 1) / 2;
-      renderer.drawLine(x, ly, x + (i == 2 ? icon * 2 / 3 : icon), ly, true);
+    // "All": two boxes stacked, a ticked one behind an empty one.
+    {
+      constexpr int shift = 3;
+      const int bx = x + shift;
+      const int by = iconY - shift;
+      renderer.drawRect(bx, by, icon + 1, icon + 1, true);
+      renderer.drawLine(bx + 1, by + 1, bx + icon - 1, by + icon - 1, true);
+      renderer.drawLine(bx + icon - 1, by + 1, bx + 1, by + icon - 1, true);
+      renderer.fillRect(x, iconY, icon + 1, icon + 1, false);
+      renderer.drawRect(x, iconY, icon + 1, icon + 1, true);
+      x += icon + shift + iconGap;
     }
-    x += icon + iconGap;
     renderer.drawText(kSmallFontId, x, textTop, totalText, true);
     x += totalWidth + partGap;
 
