@@ -9,6 +9,7 @@
 //    tap a box (left margin)        tick / untick
 //    tap an empty line              keyboard: add items (commas separate them)
 //    long press an item             small buttons: edit / delete (delete has an undo)
+//    long press a box               small buttons: check all / uncheck all / delete all (undo)
 //    tap or hold the headline       small buttons: new list / rename / delete list (asks first)
 //    reader-menu gesture            hide / show checked items (remembered per list)
 //    swipe or tap elsewhere         turn pages, as set in Settings; past the last page comes
@@ -26,8 +27,10 @@
 #include "ReaderActivity.h"
 
 class ListReaderActivity final : public ReaderActivity {
-  enum class Action : uint8_t { None, Edit, Delete, Add, NewList, Rename, DeleteList, ToggleHide, Undo };
-  enum class Overlay : uint8_t { None, Item, Title, Menu };
+  enum class Action : uint8_t {
+    None, Edit, Delete, Add, NewList, Rename, DeleteList, ToggleHide, Undo, CheckAll, UncheckAll, DeleteAll
+  };
+  enum class Overlay : uint8_t { None, Item, Title, Bulk, Menu };
 
   struct Button {
     int x = 0, y = 0, w = 0, h = 0;
@@ -37,13 +40,14 @@ class ListReaderActivity final : public ReaderActivity {
   std::string listName;
   std::vector<todolist::Item> items;
   bool hideDone = false;
-  bool coverChecked = false;  // own home-screen cover (with the list name) made or found
+  bool coverDirty = false;    // the home-screen picture of this list must be redrawn on exit
+  bool listGone = false;      // deleted or renamed: no picture on exit
   const char* message = nullptr;  // one-off note in the footer (error, name taken ...)
 
-  // Undo for the last delete, until the page changes or something else is edited.
+  // Undo for the last delete (one entry or all), until the page changes or something else is
+  // edited: the whole list as it was before.
   bool undoPending = false;
-  int undoIndex = 0;
-  todolist::Item undoItem;
+  std::vector<todolist::Item> undoItems;
 
   // Overlay buttons (touch) or menu (keys); drawn by renderBook(), read by loop().
   Overlay overlay = Overlay::None;
@@ -63,7 +67,11 @@ class ListReaderActivity final : public ReaderActivity {
   void renderBook() override;
   bool isAtEndOfBook() const override { return false; }
 
-  void newSheet();
+  void newSheet(int page);
+  void layoutPages();
+  void drawSheet(int page, bool forCover);
+  void saveCoverPicture();
+  void setAllDone(bool done);
   bool save();
   void toggleEntry(int pageEntry);
   void toggleHideDone();
@@ -74,7 +82,6 @@ class ListReaderActivity final : public ReaderActivity {
   void openKeyboard(Action action, int item);
   void confirmDeleteList();
   bool openNeighbourList(bool forward);
-  void ensureNamedCover();
   void drawOverlay(bool touch);
   bool handleOverlayInput(bool touch);
 
@@ -84,6 +91,8 @@ class ListReaderActivity final : public ReaderActivity {
       : ReaderActivity("ListReader", renderer, mappedInput, std::move(bookPath), allowFastInitialRefresh) {}
   ~ListReaderActivity() override = default;
 
+  void onEnter() override;
+  void onExit() override;
   void loop() override;
   bool pageTurn(bool isForward) override;
   ScreenshotInfo getScreenshotInfo() const override;

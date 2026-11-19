@@ -52,6 +52,7 @@ bool ListReaderActivity::loadBook() {
   listName = todolist::nameFromPath(bookPath);
   if (!todolist::loadList(bookPath, items)) return false;
   hideDone = todolist::isDoneHidden(listName);
+  coverDirty = !Storage.exists(todolist::namedCoverPath(bookPath).c_str());
   if (todolist::openOnLastPage()) {
     todolist::openOnLastPage() = false;
     currentPage = 1 << 20;  // the last page (clamped on render)
@@ -77,13 +78,14 @@ bool ListReaderActivity::openNeighbourList(const bool forward) {
 
 // Every page of a list keeps its own tears: the pattern comes from the list name and the page
 // number, so going back to a page shows the same sheet, and every list tears differently.
-void ListReaderActivity::newSheet() {
+void ListReaderActivity::newSheet(const int page) {
   uint32_t h = 2166136261u;
   for (const char c : listName) h = (h ^ static_cast<uint8_t>(c)) * 16777619u;
-  paperSeed = (h ^ (static_cast<uint32_t>(currentPage) * 2654435761u)) | 1u;
+  paperSeed = (h ^ (static_cast<uint32_t>(page) * 2654435761u)) | 1u;
 }
 
 bool ListReaderActivity::save() {
+  coverDirty = true;
   if (todolist::saveList(bookPath, items)) return true;
   message = tr(STR_TODO_SAVE_FAILED);
   return false;
@@ -124,11 +126,59 @@ void ListReaderActivity::toggleEntry(const int pageEntry) {
 
 void ListReaderActivity::toggleHideDone() {
   hideDone = !hideDone;
+  coverDirty = true;
   todolist::setDoneHidden(listName, hideDone);
   currentPage = 0;
   selected = 0;
   undoPending = false;
   // the sheet keeps its tears: they only change when the reader turns a page
+}
+
+void ListReaderActivity::setAllDone(const bool done) {
+  std::vector<todolist::Item> before = items;
+  for (auto& item : items) item.done = done;
+  undoPending = false;
+  if (!save()) items = before;
+}
+
+// Only one list is among the recent books (the home screen), the one used last: from there a
+// swipe leads through all lists, and the lists don't push the books off the home screen.
+void ListReaderActivity::onEnter() {
+  ReaderActivity::onEnter();
+  std::vector<std::string> others;
+  for (const auto& book : RECENT_BOOKS.getBooks()) {
+    if (todolist::isListPath(book.path) && book.path != bookPath) others.push_back(book.path);
+  }
+  bool changed = false;
+  for (const auto& path : others) changed = RECENT_BOOKS.removeByPath(path) || changed;
+  if (changed) RECENT_BOOKS.saveToFile();
+}
+
+// Leaving a list that changed: its home-screen picture becomes the list itself (the first page).
+void ListReaderActivity::onExit() {
+  saveCoverPicture();
+  ReaderActivity::onExit();
+}
+
+// Runs while leaving the list (the render lock is already held). Draws the first page into the
+// screen memory, in portrait, and keeps it as the list's cover; the next screen draws over it.
+void ListReaderActivity::saveCoverPicture() {
+  if (!coverDirty || listGone || !Storage.exists(bookPath.c_str())) return;
+  const auto orientation = renderer.getOrientation();
+  const int savedPage = currentPage;
+  renderer.setOrientation(GfxRenderer::Portrait);
+  layoutPages();
+  drawSheet(0, true);
+  const std::string path = todolist::namedCoverPath(bookPath);
+  if (todolist::covermaker::savePng(renderer, path)) {
+    coverDirty = false;
+    todolist::clearListThumbs(bookPath);
+  } else {
+    LOG_ERR("TODO", "could not write the cover %s", path.c_str());
+  }
+  renderer.setOrientation(orientation);
+  renderer.clearScreen();
+  currentPage = savedPage;
 }
 
 void ListReaderActivity::moveSelection(const int delta) {
@@ -155,24 +205,34 @@ void ListReaderActivity::runAction(const Action action, const int pageEntry) {
   const int index = itemOfEntry(pageEntry);
   switch (action) {
     case Action::Delete:
-      if (index < 0) break;
-      undoItem = items[index];
-      undoIndex = index;
-      items.erase(items.begin() + index);
+    case Action::DeleteAll: {
+      if (action == Action::Delete ? index < 0 : items.empty()) break;
+      undoItems = items;
+      if (action == Action::Delete) {
+        items.erase(items.begin() + index);
+      } else {
+        items.clear();
+        currentPage = 0;
+      }
       if (save()) {
         undoPending = true;
       } else {
-        items.insert(items.begin() + index, undoItem);
+        items = undoItems;
       }
       break;
+    }
     case Action::Undo: {
       if (!undoPending) break;
-      const int at = std::min(undoIndex, static_cast<int>(items.size()));
-      items.insert(items.begin() + at, undoItem);
-      if (!save()) items.erase(items.begin() + at);
+      std::vector<todolist::Item> now = items;
+      items = undoItems;
+      if (!save()) items = now;
       undoPending = false;
       break;
     }
+    case Action::CheckAll:
+    case Action::UncheckAll:
+      setAllDone(action == Action::CheckAll);
+      break;
     case Action::ToggleHide:
       toggleHideDone();
       break;
@@ -211,6 +271,7 @@ void ListReaderActivity::confirmDeleteList() {
       message = tr(STR_TODO_SAVE_FAILED);
       return;
     }
+    listGone = true;
     const std::string cover = todolist::namedCoverPath(bookPath);
     if (Storage.exists(cover.c_str())) Storage.remove(cover.c_str());
     if (RECENT_BOOKS.removeByPath(bookPath)) RECENT_BOOKS.saveToFile();
@@ -264,8 +325,7 @@ void ListReaderActivity::openKeyboard(const Action action, const int item) {
         if (item < 0 || item >= static_cast<int>(items.size())) break;
         const std::vector<todolist::Item> before = items;
         if (!todolist::applyEdit(items, static_cast<size_t>(item), typed)) {  // emptied: that is a delete
-          undoItem = items[item];
-          undoIndex = item;
+          undoItems = before;
           items.erase(items.begin() + item);
           undoPending = save();
           if (!undoPending) items = before;
@@ -291,6 +351,8 @@ void ListReaderActivity::openKeyboard(const Action action, const int item) {
           break;
         }
         RECENT_BOOKS.removeByPath(bookPath);
+        listGone = true;  // the picture is made again under the new name
+        Storage.remove(todolist::namedCoverPath(bookPath).c_str());
         activityManager.goToReader(todolist::pathFor(name));
         break;
       }
@@ -369,7 +431,8 @@ void ListReaderActivity::loop() {
   if (touch) {
     int x = 0;
     int y = 0;
-    // Long press: buttons for the item (edit / delete) or for the headline (new list / rename).
+    // Long press: buttons for the item (edit / delete), for all items (on a box: check all /
+    // uncheck all / delete all) or for the headline (new list / rename / delete list).
     if (mappedInput.wasScreenLongPress(x, y)) {
       bool opened = false;
       {
@@ -379,7 +442,8 @@ void ListReaderActivity::loop() {
         } else if (currentPage < static_cast<int>(pages.size()) && y < paper.footerRuleY) {
           const int hit = todolist::entryAt(pages[currentPage], y - paper.listTop, 0);
           if (hit >= 0) {
-            overlay = Overlay::Item;
+            // on a box: all entries at once; on the text: this entry
+            overlay = x < paper.marginX ? Overlay::Bulk : Overlay::Item;
             overlayEntry = hit;
           }
         }
@@ -522,11 +586,15 @@ void ListReaderActivity::drawOverlay(const bool touch) {
     buttons.push_back(Button{x, y, w, h, action});
   };
 
-  if (touch && (overlay == Overlay::Item || overlay == Overlay::Title)) {
-    const bool item = overlay == Overlay::Item;
+  if (touch && (overlay == Overlay::Item || overlay == Overlay::Bulk || overlay == Overlay::Title)) {
+    const bool item = overlay == Overlay::Item || overlay == Overlay::Bulk;
     std::vector<std::pair<const char*, Action>> pills;
-    if (item) {
+    if (overlay == Overlay::Item) {
       pills = {{tr(STR_TODO_EDIT), Action::Edit}, {tr(STR_TODO_DELETE), Action::Delete}};
+    } else if (overlay == Overlay::Bulk) {
+      pills = {{tr(STR_TODO_CHECK_ALL), Action::CheckAll},
+               {tr(STR_TODO_UNCHECK_ALL), Action::UncheckAll},
+               {tr(STR_TODO_DELETE_ALL), Action::DeleteAll}};
     } else {
       pills = {{tr(STR_TODO_NEW_LIST), Action::NewList},
                {tr(STR_TODO_RENAME), Action::Rename},
@@ -567,6 +635,11 @@ void ListReaderActivity::drawOverlay(const bool touch) {
     rows.emplace_back(tr(STR_TODO_DELETE), Action::Delete);
   }
   rows.emplace_back(hideDone ? tr(STR_TODO_MENU_SHOW) : tr(STR_TODO_MENU_HIDE), Action::ToggleHide);
+  if (!items.empty()) {
+    rows.emplace_back(tr(STR_TODO_CHECK_ALL), Action::CheckAll);
+    rows.emplace_back(tr(STR_TODO_UNCHECK_ALL), Action::UncheckAll);
+    rows.emplace_back(tr(STR_TODO_DELETE_ALL), Action::DeleteAll);
+  }
   rows.emplace_back(tr(STR_TODO_NEW_LIST), Action::NewList);
   rows.emplace_back(tr(STR_TODO_RENAME), Action::Rename);
   rows.emplace_back(tr(STR_TODO_DELETE_LIST), Action::DeleteList);
@@ -583,40 +656,8 @@ void ListReaderActivity::drawOverlay(const bool touch) {
   }
 }
 
-// The list's own home-screen cover: the notepad page with the list name as heading. Made once,
-// the first time the list is shown (a new or renamed list gets it right away). Drawn into the
-// screen memory before the page itself, so nothing of it is ever visible.
-void ListReaderActivity::ensureNamedCover() {
-  if (coverChecked) return;
-  coverChecked = true;
-  const std::string path = todolist::namedCoverPath(bookPath);
-  if (Storage.exists(path.c_str())) return;
-  const auto orientation = renderer.getOrientation();
-  renderer.setOrientation(GfxRenderer::Portrait);
-  renderer.clearScreen();
-  todolist::covermaker::drawBase(renderer, todolist::coverIndexFor(bookPath));
-
-  const int* box = todolist::kTitleBox;
-  const int boxWidth = box[2] - box[0] - 8;
-  const int font = kTitleFontId;  // always the big writing; a long name ends with "..."
-  const std::string title = renderer.truncatedText(font, todolist::toHeadline(listName).c_str(), boxWidth);
-  const int top = box[3] - 14 - renderer.getFontAscenderSize(font);
-  for (int ox = 0; ox < 3; ox++) {  // felt-pen strokes, like the headline
-    renderer.drawText(font, box[0] + 4 + ox, top, title.c_str(), true);
-  }
-  const bool saved = todolist::covermaker::savePng(renderer, path);
-  renderer.setOrientation(orientation);
-  renderer.clearScreen();
-  if (saved) {
-    todolist::clearListThumbs(bookPath);
-  } else {
-    LOG_ERR("TODO", "could not write the cover %s", path.c_str());
-  }
-}
-
-void ListReaderActivity::renderBook() {
-  ensureNamedCover();
-  const bool touch = mappedInput.hasTouch();
+// Items are laid out for the current screen; also clamps the page and the key selection.
+void ListReaderActivity::layoutPages() {
   int top = 0;
   int right = 0;
   int bottom = 0;
@@ -624,7 +665,6 @@ void ListReaderActivity::renderBook() {
   renderer.getOrientedViewableTRBL(&top, &right, &bottom, &left);
   const int width = renderer.getScreenWidth();
   const int height = renderer.getScreenHeight();
-
   const int lineHeight = std::max(1, renderer.getLineHeight(kListFontId));
   paper = listpaper::geometry(width, height, lineHeight, top, right, bottom, left);
   const int textWidth = std::max(40, paper.right - paper.textX);
@@ -639,13 +679,34 @@ void ListReaderActivity::renderBook() {
     const int count = static_cast<int>(pages[currentPage].entries.size());
     if (selected < 0 || selected >= count) selected = count - 1;
   }
-  newSheet();  // tears belong to this page
+}
+
+void ListReaderActivity::renderBook() {
+  layoutPages();
+  drawSheet(currentPage, false);
+  ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh);
+  markPageRendered();
+}
+
+// Draws one page of the list into the screen memory. For the home-screen picture (forCover):
+// the first page as it looks, without the footer, buttons or key selection, square corners.
+void ListReaderActivity::drawSheet(const int page, const bool forCover) {
+  const bool touch = mappedInput.hasTouch();
+  int top = 0;
+  int right = 0;
+  int bottom = 0;
+  int left = 0;
+  renderer.getOrientedViewableTRBL(&top, &right, &bottom, &left);
+  const int width = renderer.getScreenWidth();
+  const int height = renderer.getScreenHeight();
+  const int textWidth = std::max(40, paper.right - paper.textX);
+  newSheet(page);  // tears belong to this page
 
   renderer.clearScreen();
   const auto px = [&](const int x, const int y, const bool black) {
     if (x >= 0 && y >= 0 && x < width && y < height) renderer.drawPixel(x, y, black);
   };
-  listpaper::paintPaper(paper, paperSeed, px);
+  listpaper::paintPaper(paper, paperSeed, px, !forCover);
 
   // Header: the list name as a headline (upper case, felt-pen strokes). A long name is written
   // one size smaller, and only cut with "..." if even that does not fit.
@@ -719,16 +780,17 @@ void ListReaderActivity::renderBook() {
     renderer.drawText(kSmallFontId, x, textTop, doneText, true);
   }
 
+  if (!forCover) {
   // Footer, under a pen line: an eye in the box column (open = checked items shown, closed =
   // hidden) and a hint that names the gesture set in Settings; or "undo" right after a delete;
   // and the page ("1/1" too).
   listpaper::paintFooterRule(paper, px);
   const int smallAscender = renderer.getFontAscenderSize(kSmallFontId);
   const int footY = paper.footerBaseline - smallAscender;
-  char page[16];
-  snprintf(page, sizeof(page), "%d/%d", currentPage + 1, std::max(1, static_cast<int>(pages.size())));
-  const int pageW = renderer.getTextWidth(kSmallFontId, page);
-  renderer.drawText(kSmallFontId, paper.right - pageW, footY, page, true);
+  char pageText[16];
+  snprintf(pageText, sizeof(pageText), "%d/%d", page + 1, std::max(1, static_cast<int>(pages.size())));
+  const int pageW = renderer.getTextWidth(kSmallFontId, pageText);
+  renderer.drawText(kSmallFontId, paper.right - pageW, footY, pageText, true);
   const int hintWidth = std::max(40, paper.right - pageW - 16 - paper.textX);
   const int doneCount = static_cast<int>(items.size()) - todolist::countOpen(items);
   char hint[96] = "";
@@ -760,6 +822,7 @@ void ListReaderActivity::renderBook() {
     renderer.drawText(kSmallFontId, paper.textX, footY, renderer.truncatedText(kSmallFontId, hint, hintWidth).c_str(),
                       true);
   }
+  }  // footer
 
   // Items: box in the margin on the item's first line, text on the ruled lines.
   const int ascender = renderer.getFontAscenderSize(kListFontId);
@@ -769,7 +832,7 @@ void ListReaderActivity::renderBook() {
     renderer.drawText(kListFontId, paper.textX, listpaper::ruleY(paper, 0) - 4 - ascender,
                       renderer.truncatedText(kListFontId, msg, textWidth).c_str(), true);
   } else {
-    const auto& pageData = pages[currentPage];
+    const auto& pageData = pages[page];
     for (int i = 0; i < static_cast<int>(pageData.entries.size()); i++) {
       const auto& entry = pageData.entries[i];
       const int firstLine = entry.top / paper.pitch;
@@ -778,15 +841,13 @@ void ListReaderActivity::renderBook() {
         renderer.drawText(kListFontId, paper.textX, listpaper::ruleY(paper, firstLine + l) - 4 - ascender,
                           entry.lines[l].c_str(), true);
       }
-      if (!touch && i == selected) {
+      if (!forCover && !touch && i == selected) {
         listpaper::paintSelection(paper, firstLine, static_cast<int>(entry.lines.size()), px);
       }
     }
   }
 
-  drawOverlay(touch);
-  ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh);
-  markPageRendered();
+  if (!forCover) drawOverlay(touch);
 }
 
 ScreenshotInfo ListReaderActivity::getScreenshotInfo() const {
