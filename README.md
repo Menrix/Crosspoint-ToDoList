@@ -154,12 +154,7 @@ needs, the build stops with `TODOLIST PATCH FAILED: ...` instead of making a bro
 Self-built firmware lacks the official key for CrossPoint's LCP service (only relevant for
 LCP-protected books from it); everything else works as in the official release.
 
-## Made with Claude
-
-Made with the help of [Claude](https://claude.ai), an AI assistant by Anthropic. Claude wrote
-most of the code; the ideas, the design decisions and the testing on a real X4 Pro come from
-the project's author. The code is reviewed by tests that run before every build, but please
-keep in mind that it was not written line by line by a human.
+Made with the help of [Claude](https://claude.ai).
 
 ## License
 
