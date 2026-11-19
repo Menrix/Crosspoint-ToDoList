@@ -77,7 +77,10 @@ be in the same Wi-Fi (or use the reader's **Create Hotspot**).
 **Easiest way, no setup:** open the address the reader shows in your browser, go to the
 `Lists` folder and upload your `.txt` file. (A file with the same name replaces that list.)
 
-**Share button on the iPhone, iPad or Mac** (set up once, then two taps):
+**Share button** (set up once, then two taps): pick your device below.
+
+<details>
+<summary>iPhone, iPad and Mac</summary>
 
 1. Open the **Shortcuts** app, tap **+**, name it **To X4**.
 2. Add the action **Get Contents of URL** and enter `http://crosspoint.local/api/lists/add`
@@ -89,7 +92,7 @@ be in the same Wi-Fi (or use the reader's **Create Hotspot**).
 Now select some text anywhere, tap **Share → To X4** and type the list name. The things are
 added to that list (or a new list is made). Nothing is added twice.
 
-If it doesn't work, replace `crosspoint.local` with the address the reader shows (e.g. `192.168.0.25`).
+</details>
 
 <details>
 <summary>Android</summary>
@@ -103,6 +106,8 @@ If it doesn't work, replace `crosspoint.local` with the address the reader shows
 Then: select text → **Share → To X4** → type the list name.
 
 </details>
+
+If it doesn't work, replace `crosspoint.local` with the address the reader shows (e.g. `192.168.0.25`).
 
 <details>
 <summary>For tinkerers</summary>
