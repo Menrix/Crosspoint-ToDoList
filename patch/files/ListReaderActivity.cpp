@@ -662,7 +662,7 @@ void ListReaderActivity::renderBook() {
     renderer.drawText(headFont, paper.textX + ox, titleBaseline - headAscender, headline.c_str(), true);
   }
 
-  // Above the headline, small and right-aligned (so a long name is never covered): how many
+  // Above the headline, small and centred over it (so a long name is never covered): how many
   // entries are open and how many done, each with a little box like in the list. The done
   // number also tells how many are hidden when checked entries are hidden.
   {
@@ -674,24 +674,28 @@ void ListReaderActivity::renderBook() {
     snprintf(doneText, sizeof(doneText), "%d %s", doneCount, tr(STR_TODO_COUNT_DONE));
     const int smallAscender = renderer.getFontAscenderSize(kSmallFontId);
     const int textTop = std::max(top + 2, titleBaseline - headAscender - 6 - smallAscender);
-    const int box = std::max(10, smallAscender * 2 / 3);
+    const int box = std::max(8, smallAscender / 2);
     const int boxY = textTop + (smallAscender - box) / 2 + 2;
     const int openWidth = renderer.getTextWidth(kSmallFontId, openText);
     const int doneWidth = renderer.getTextWidth(kSmallFontId, doneText);
-    int x = paper.right - 8 - (box + 6 + openWidth + 18 + box + 6 + doneWidth);
+    // Centred over the headline (or starting where it starts, if the headline is shorter).
+    const int blockWidth = box + 5 + openWidth + 16 + box + 5 + doneWidth;
+    const int headWidth = renderer.getTextWidth(headFont, headline.c_str()) + 2;
+    int x = paper.textX + (headWidth - blockWidth) / 2;
+    x = std::max(paper.textX, std::min(x, paper.right - 8 - blockWidth));
     const auto smallBox = [&](const int bx, const bool done) {
-      renderer.drawRect(bx, boxY, box, box, 2, true);
+      renderer.drawRect(bx, boxY, box, box, true);
       if (done) {
-        renderer.drawLine(bx + 3, boxY + 3, bx + box - 4, boxY + box - 4, 2, true);
-        renderer.drawLine(bx + box - 4, boxY + 3, bx + 3, boxY + box - 4, 2, true);
+        renderer.drawLine(bx + 2, boxY + 2, bx + box - 3, boxY + box - 3, true);
+        renderer.drawLine(bx + box - 3, boxY + 2, bx + 2, boxY + box - 3, true);
       }
     };
     smallBox(x, false);
-    x += box + 6;
+    x += box + 5;
     renderer.drawText(kSmallFontId, x, textTop, openText, true);
-    x += openWidth + 18;
+    x += openWidth + 16;
     smallBox(x, true);
-    x += box + 6;
+    x += box + 5;
     renderer.drawText(kSmallFontId, x, textTop, doneText, true);
   }
 
