@@ -92,6 +92,8 @@ be in the same Wi-Fi (or use the reader's **Create Hotspot**).
 Now select some text anywhere, tap **Share → To X4** and type the list name. The things are
 added to that list (or a new list is made). Nothing is added twice.
 
+If it doesn't work, replace `crosspoint.local` with the address the reader shows (e.g. `192.168.0.25`).
+
 </details>
 
 <details>
@@ -105,9 +107,9 @@ added to that list (or a new list is made). Nothing is added twice.
 
 Then: select text → **Share → To X4** → type the list name.
 
-</details>
-
 If it doesn't work, replace `crosspoint.local` with the address the reader shows (e.g. `192.168.0.25`).
+
+</details>
 
 <details>
 <summary>For tinkerers</summary>
