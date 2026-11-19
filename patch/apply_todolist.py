@@ -39,6 +39,8 @@ STRINGS = {
         "STR_TODO_NEW_LIST": "new list",
         "STR_TODO_RENAME": "rename list",
         "STR_TODO_DELETE_LIST": "delete list",
+        "STR_TODO_COUNT_OPEN": "open",
+        "STR_TODO_COUNT_DONE": "done",
         "STR_TODO_DELETE_LIST_ASK": "Delete this list for good?",
         "STR_TODO_ADD_ITEMS": "add items",
         "STR_TODO_UNDO": "undo delete",

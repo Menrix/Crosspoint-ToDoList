@@ -662,6 +662,39 @@ void ListReaderActivity::renderBook() {
     renderer.drawText(headFont, paper.textX + ox, titleBaseline - headAscender, headline.c_str(), true);
   }
 
+  // Above the headline, small and right-aligned (so a long name is never covered): how many
+  // entries are open and how many done, each with a little box like in the list. The done
+  // number also tells how many are hidden when checked entries are hidden.
+  {
+    const int openCount = todolist::countOpen(items);
+    const int doneCount = static_cast<int>(items.size()) - openCount;
+    char openText[24];
+    char doneText[24];
+    snprintf(openText, sizeof(openText), "%d %s", openCount, tr(STR_TODO_COUNT_OPEN));
+    snprintf(doneText, sizeof(doneText), "%d %s", doneCount, tr(STR_TODO_COUNT_DONE));
+    const int smallAscender = renderer.getFontAscenderSize(kSmallFontId);
+    const int textTop = std::max(top + 2, titleBaseline - headAscender - 6 - smallAscender);
+    const int box = std::max(10, smallAscender * 2 / 3);
+    const int boxY = textTop + (smallAscender - box) / 2 + 2;
+    const int openWidth = renderer.getTextWidth(kSmallFontId, openText);
+    const int doneWidth = renderer.getTextWidth(kSmallFontId, doneText);
+    int x = paper.right - 8 - (box + 6 + openWidth + 18 + box + 6 + doneWidth);
+    const auto smallBox = [&](const int bx, const bool done) {
+      renderer.drawRect(bx, boxY, box, box, 2, true);
+      if (done) {
+        renderer.drawLine(bx + 3, boxY + 3, bx + box - 4, boxY + box - 4, 2, true);
+        renderer.drawLine(bx + box - 4, boxY + 3, bx + 3, boxY + box - 4, 2, true);
+      }
+    };
+    smallBox(x, false);
+    x += box + 6;
+    renderer.drawText(kSmallFontId, x, textTop, openText, true);
+    x += openWidth + 18;
+    smallBox(x, true);
+    x += box + 6;
+    renderer.drawText(kSmallFontId, x, textTop, doneText, true);
+  }
+
   // Footer, under a pen line: an eye in the box column (open = checked items shown, closed =
   // hidden) and a hint that names the gesture set in Settings; or "undo" right after a delete;
   // and the page ("1/1" too).
