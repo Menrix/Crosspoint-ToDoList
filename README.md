@@ -32,8 +32,8 @@ Copy it to the SD card and use **Settings → SD Card Firmware Update**. Later u
 
 No phone or computer needed: create lists, write, tick and delete everything on the reader.
 An empty list, **TO DO**, is there from the start: open it like a book and write. Tap its
-headline for **new list**. There is always at least one list: if you delete the last one, a new
-empty **TO DO** appears.
+headline for **new list**. There is always at least one list: if you delete the last one (anywhere), a
+new empty **TO DO** appears.
 
 | What | X4 Pro (touch) | X3 / X4 (buttons) |
 | --- | --- | --- |

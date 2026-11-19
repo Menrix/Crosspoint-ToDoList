@@ -3,6 +3,7 @@
 // The file rules themselves live in ListCore.h; this is only the SD card part.
 
 #include <HalStorage.h>
+#include <LibraryBuilder.h>
 #include <Logging.h>
 #include <WString.h>
 
@@ -83,12 +84,13 @@ inline bool& openOnLastPage() {
 }
 
 // There is always at least one list, because new lists are made from inside a list (tap the
-// headline). On first start, and whenever the last list was deleted (on the reader, in the file
-// browser or on the computer), an empty "TO DO" list is made. Names are in capitals, like the headline.
+// headline). Checked at start, on every return to the home screen and after "delete list": when
+// the last list is gone (deleted on the reader, in the library, the file browser or on the
+// computer), an empty "TO DO" list is made. Names are in capitals, like the headline.
 inline void ensureStarterList() {
   if (hasAnyList()) return;
   Storage.ensureDirectoryExists(kListsDir);
-  Storage.writeFile(pathFor("TO DO").c_str(), String(""));
+  if (Storage.writeFile(pathFor("TO DO").c_str(), String(""))) library::markLibraryIndexDirty();
 }
 
 // Creates an empty list. False if the name is unusable or the file cannot be written.

@@ -187,6 +187,18 @@ def main() -> None:
                        "library recent lists")
     lib.write_text(src, encoding="utf-8")
 
+    # 3e) Back on the home screen: if the last list was deleted (e.g. in the library), a fresh
+    # empty "TO DO" appears right away, not only after a restart.
+    home = root / "src" / "activities" / "home" / "HomeActivity.cpp"
+    src = home.read_text(encoding="utf-8")
+    src = replace_once(src, '#include "RecentBooksStore.h"\n',
+                       '#include "RecentBooksStore.h"\n#include "activities/reader/ListStore.h"\n', "home include")
+    src = replace_once(src, "void HomeActivity::onEnter() {\n  Activity::onEnter();\n",
+                       "void HomeActivity::onEnter() {\n  Activity::onEnter();\n"
+                       "  todolist::ensureStarterList();  // Crosspoint-ToDoList: there is always one list\n",
+                       "home starter list")
+    home.write_text(src, encoding="utf-8")
+
     # 4) Texts. Languages without their own entry fall back to English.
     translations = root / "lib" / "I18n" / "translations"
     for file_name, entries in STRINGS.items():
