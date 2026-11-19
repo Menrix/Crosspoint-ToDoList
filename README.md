@@ -84,12 +84,10 @@ fine too.
 Put the file into the folder **`Lists`** on the SD card. That's all: the reader shows it as a
 list.
 
-You never have to type boxes or marks yourself. The reader keeps track of what is ticked by
-itself (it adds `[ ]` and `[x]` in the file), so don't be surprised if you open the file later.
-
 Good to know:
 - For a comma that belongs to the thing, use a dash: `Apples - the red ones`.
 - The order stays as you wrote it.
+- What you tick, the reader notes in the file as `[x]`.
 
 </details>
 
