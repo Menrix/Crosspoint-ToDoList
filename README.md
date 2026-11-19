@@ -1,5 +1,7 @@
 # CrossPoint To-Do List
 
+*Your shopping list on your e-reader – write it, tick it, done. No phone needed.*
+
 To-do and shopping lists for the [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader)
 firmware.
 
@@ -14,6 +16,8 @@ firmware.
 - **Notepad look & covers**
 - **Plain text files** – no app, no cloud
 - *Optional:* **send lists from phone or PC**
+
+**Free & open source · Ready to flash · Updates built in**
 
 ## Install
 
