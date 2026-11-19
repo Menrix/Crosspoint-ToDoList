@@ -695,8 +695,8 @@ void ListReaderActivity::renderBook() {
       const int bx = x + shift;
       const int by = iconY - shift;
       renderer.drawRect(bx, by, icon + 1, icon + 1, true);
-      renderer.drawLine(bx + 2, by + 2, bx + icon - 2, by + icon - 2, true);  // X with a gap, as in done
-      renderer.drawLine(bx + icon - 2, by + 2, bx + 2, by + icon - 2, true);
+      renderer.drawLine(bx + 1, by + 1, bx + icon - 1, by + icon - 1, true);  // X to the edge: clearer when small
+      renderer.drawLine(bx + icon - 1, by + 1, bx + 1, by + icon - 1, true);
       renderer.fillRect(x, iconY, icon + 1, icon + 1, false);
       renderer.drawRect(x, iconY, icon + 1, icon + 1, true);
       x += icon + shift + iconGap;
