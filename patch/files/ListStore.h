@@ -3,11 +3,13 @@
 // The file rules themselves live in ListCore.h; this is only the SD card part.
 
 #include <HalStorage.h>
+#include <I18n.h>
 #include <LibraryBuilder.h>
 #include <Logging.h>
 #include <WString.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <functional>
 #include <string>
 #include <vector>
@@ -74,6 +76,19 @@ inline std::vector<std::string> allListPaths() {
     return detail::foldKey(a) < detail::foldKey(b);
   });
   return paths;
+}
+
+// The small line under a list's name on the home screen and in the library, where a book shows
+// its author: how many lists there are, and that a swipe leads through them.
+inline std::string listsSubtitle() {
+  const size_t count = allListPaths().size();
+  char text[64];
+  if (count <= 1) {
+    snprintf(text, sizeof(text), "%s", tr(STR_TODO_SUBTITLE_ONE));
+  } else {
+    snprintf(text, sizeof(text), "%u %s", static_cast<unsigned>(count), tr(STR_TODO_SUBTITLE_MANY));
+  }
+  return text;
 }
 
 // Set before opening the previous list by turning back past its first page: that list then

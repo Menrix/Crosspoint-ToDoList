@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "ListCore.h"
+#include "ListStore.h"
 #include "ListPaper.h"
 #include "ReaderActivity.h"
 
@@ -64,6 +65,7 @@ class ListReaderActivity final : public ReaderActivity {
 
   bool loadBook() override;
   std::string getBookTitle() const override { return listName; }
+  std::string getBookAuthor() const override { return todolist::listsSubtitle(); }
   void renderBook() override;
   bool isAtEndOfBook() const override { return false; }
 
