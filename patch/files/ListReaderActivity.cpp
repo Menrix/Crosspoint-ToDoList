@@ -662,38 +662,52 @@ void ListReaderActivity::renderBook() {
     renderer.drawText(headFont, paper.textX + ox, titleBaseline - headAscender, headline.c_str(), true);
   }
 
-  // Above the headline, small and in the middle of the page (a long name is never covered): how many
-  // entries are open and how many done, each with a little box like in the list. The done
-  // number also tells how many are hidden when checked entries are hidden.
+  // Above the headline, small and in the middle of the page (a long name is never covered):
+  // how many entries there are, how many are open and how many done:  = 9 total  [] 5 open  [x] 4 done
+  // The done number also tells how many are hidden when checked entries are hidden.
   {
     const int openCount = todolist::countOpen(items);
     const int doneCount = static_cast<int>(items.size()) - openCount;
+    char totalText[24];
     char openText[24];
     char doneText[24];
+    snprintf(totalText, sizeof(totalText), "%d %s", static_cast<int>(items.size()), tr(STR_TODO_COUNT_TOTAL));
     snprintf(openText, sizeof(openText), "%d %s", openCount, tr(STR_TODO_COUNT_OPEN));
     snprintf(doneText, sizeof(doneText), "%d %s", doneCount, tr(STR_TODO_COUNT_DONE));
     const int smallAscender = renderer.getFontAscenderSize(kSmallFontId);
     const int textTop = std::max(top + 2, titleBaseline - headAscender - 6 - smallAscender);
-    const int box = std::max(8, smallAscender / 2);
-    const int boxY = textTop + (smallAscender - box) / 2 + 2;
+    const int icon = std::max(8, smallAscender / 2);
+    const int iconY = textTop + (smallAscender - icon) / 2 + 2;
+    constexpr int iconGap = 5;
+    constexpr int partGap = 16;
+    const int totalWidth = renderer.getTextWidth(kSmallFontId, totalText);
     const int openWidth = renderer.getTextWidth(kSmallFontId, openText);
     const int doneWidth = renderer.getTextWidth(kSmallFontId, doneText);
-    // Always in the middle of the page, so it sits in the same place on every list.
-    const int blockWidth = box + 5 + openWidth + 16 + box + 5 + doneWidth;
-    int x = (paper.paperLeft + paper.right - blockWidth) / 2;
+    const int blockWidth = 3 * (icon + iconGap) + totalWidth + openWidth + doneWidth + 2 * partGap;
+    int x = (paper.paperLeft + paper.right - blockWidth) / 2;  // always the middle of the page
+
+    // "All": three lines, the lower one shorter, like a little list.
+    for (int i = 0; i < 3; i++) {
+      const int ly = iconY + 1 + i * (icon - 2) / 2;
+      renderer.drawLine(x, ly, x + (i == 2 ? icon * 2 / 3 : icon), ly, true);
+    }
+    x += icon + iconGap;
+    renderer.drawText(kSmallFontId, x, textTop, totalText, true);
+    x += totalWidth + partGap;
+
     const auto smallBox = [&](const int bx, const bool done) {
-      renderer.drawRect(bx, boxY, box, box, true);
+      renderer.drawRect(bx, iconY, icon, icon, true);
       if (done) {
-        renderer.drawLine(bx + 2, boxY + 2, bx + box - 3, boxY + box - 3, true);
-        renderer.drawLine(bx + box - 3, boxY + 2, bx + 2, boxY + box - 3, true);
+        renderer.drawLine(bx + 2, iconY + 2, bx + icon - 3, iconY + icon - 3, true);
+        renderer.drawLine(bx + icon - 3, iconY + 2, bx + 2, iconY + icon - 3, true);
       }
     };
     smallBox(x, false);
-    x += box + 5;
+    x += icon + iconGap;
     renderer.drawText(kSmallFontId, x, textTop, openText, true);
-    x += openWidth + 16;
+    x += openWidth + partGap;
     smallBox(x, true);
-    x += box + 5;
+    x += icon + iconGap;
     renderer.drawText(kSmallFontId, x, textTop, doneText, true);
   }
 
