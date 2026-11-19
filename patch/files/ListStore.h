@@ -87,10 +87,20 @@ inline bool& openOnLastPage() {
 // headline). Checked at start, on every return to the home screen and after "delete list": when
 // the last list is gone (deleted on the reader, in the library, the file browser or on the
 // computer), an empty "TO DO" list is made. Names are in capitals, like the headline.
+// Set when a fresh "TO DO" was just made; the home screen then shows it right away (it puts it
+// among the recent books, as if it had been opened).
+inline bool& starterJustCreated() {
+  static bool flag = false;
+  return flag;
+}
+
 inline void ensureStarterList() {
   if (hasAnyList()) return;
   Storage.ensureDirectoryExists(kListsDir);
-  if (Storage.writeFile(pathFor("TO DO").c_str(), String(""))) library::markLibraryIndexDirty();
+  if (Storage.writeFile(pathFor("TO DO").c_str(), String(""))) {
+    library::markLibraryIndexDirty();
+    starterJustCreated() = true;
+  }
 }
 
 // Creates an empty list. False if the name is unusable or the file cannot be written.

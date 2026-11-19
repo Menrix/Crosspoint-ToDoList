@@ -195,7 +195,12 @@ def main() -> None:
                        '#include "RecentBooksStore.h"\n#include "activities/reader/ListStore.h"\n', "home include")
     src = replace_once(src, "void HomeActivity::onEnter() {\n  Activity::onEnter();\n",
                        "void HomeActivity::onEnter() {\n  Activity::onEnter();\n"
-                       "  todolist::ensureStarterList();  // Crosspoint-ToDoList: there is always one list\n",
+                       "  todolist::ensureStarterList();  // Crosspoint-ToDoList: there is always one list,\n"
+                       "  if (todolist::starterJustCreated()) {  // and a fresh one shows on the home screen\n"
+                       "    todolist::starterJustCreated() = false;\n"
+                       "    RECENT_BOOKS.addBook(todolist::pathFor(\"TO DO\"), \"TO DO\", \"\", \"\");\n"
+                       "    RECENT_BOOKS.saveToFile();\n"
+                       "  }\n",
                        "home starter list")
     home.write_text(src, encoding="utf-8")
 
