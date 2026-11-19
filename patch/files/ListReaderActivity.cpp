@@ -676,8 +676,11 @@ void ListReaderActivity::renderBook() {
     snprintf(doneText, sizeof(doneText), "%d %s", doneCount, tr(STR_TODO_COUNT_DONE));
     const int smallAscender = renderer.getFontAscenderSize(kSmallFontId);
     const int textTop = std::max(top + 2, titleBaseline - headAscender - 6 - smallAscender);
-    const int icon = std::max(8, smallAscender / 2);
-    const int iconY = textTop + (smallAscender - icon) / 2 + 2;
+    // Icons as tall as the digits, centred on them (digits reach 63 % of the ascender above the
+    // baseline in this font, so their middle is at 31 %).
+    const int icon = std::max(9, smallAscender * 60 / 100);
+    const int baseline = textTop + smallAscender;
+    const int iconY = baseline - smallAscender * 31 / 100 - icon / 2;
     constexpr int iconGap = 5;
     constexpr int partGap = 16;
     const int totalWidth = renderer.getTextWidth(kSmallFontId, totalText);
@@ -688,7 +691,7 @@ void ListReaderActivity::renderBook() {
 
     // "All": three lines, the lower one shorter, like a little list.
     for (int i = 0; i < 3; i++) {
-      const int ly = iconY + 1 + i * (icon - 2) / 2;
+      const int ly = iconY + i * (icon - 1) / 2;
       renderer.drawLine(x, ly, x + (i == 2 ? icon * 2 / 3 : icon), ly, true);
     }
     x += icon + iconGap;
