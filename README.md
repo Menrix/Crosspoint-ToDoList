@@ -6,11 +6,13 @@ firmware.
 ![A shopping list on the Xteink X4 Pro](images/list.jpg)
 
 - **Create, edit, delete** – right on the reader
+- **Several entries at once** – `Milk, Bread, Eggs`
 - **Tick & undo**
 - **Smart lists** – nothing is added twice
 - **Hide / show checked**
 - **Swipe between lists**
 - **Notepad look & covers**
+- **Plain text files** – no app, no cloud
 - *Optional:* **send lists from phone or PC**
 
 ## Install
