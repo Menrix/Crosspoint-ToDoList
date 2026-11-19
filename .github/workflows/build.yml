@@ -166,6 +166,11 @@ jobs:
           merge-multiple: true
           path: dist
 
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: VERSION
+          sparse-checkout-cone-mode: false
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -180,7 +185,10 @@ jobs:
             echo "No firmware was built. Nothing to publish."
             exit 1
           fi
-          notes="CrossPoint ${VERSION} with to-do lists, build ${FULL}.
+          # The add-on's own version (file VERSION in this repository); below 1.0 it is a beta.
+          addon="$(tr -d '[:space:]' < VERSION)"
+          case "$addon" in 0.*) addon="$addon beta" ;; esac
+          notes="To-Do Lists ${addon} for CrossPoint ${VERSION} (build ${FULL}).
 
           - crosspoint-${FULL}-x4pro.bin: Xteink X4 Pro (tested)
           - crosspoint-${FULL}-x3-x4.bin: Xteink X3 and X4 (one file for both) - NOT TESTED on a device.
@@ -194,7 +202,7 @@ jobs:
 
           Built from CrossPoint ${TAG} and Crosspoint-ToDoList ${GITHUB_SHA::7}."
           gh release create "$FULL" "${files[@]}" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "CrossPoint ${VERSION} + to-do lists (build ${FULL##*.})" --notes "$notes" --latest
+            --title "To-Do Lists ${addon} – CrossPoint ${VERSION} (build ${FULL##*.})" --notes "$notes" --latest
           # Still report a failed device build (GitHub then sends an email).
           if [ "${{ needs.build.result }}" != "success" ]; then
             echo "At least one device build failed; published what was built."
