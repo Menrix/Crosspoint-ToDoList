@@ -662,7 +662,7 @@ void ListReaderActivity::renderBook() {
     renderer.drawText(headFont, paper.textX + ox, titleBaseline - headAscender, headline.c_str(), true);
   }
 
-  // Above the headline, small and centred over it (so a long name is never covered): how many
+  // Above the headline, small and in the middle of the page (a long name is never covered): how many
   // entries are open and how many done, each with a little box like in the list. The done
   // number also tells how many are hidden when checked entries are hidden.
   {
@@ -678,11 +678,9 @@ void ListReaderActivity::renderBook() {
     const int boxY = textTop + (smallAscender - box) / 2 + 2;
     const int openWidth = renderer.getTextWidth(kSmallFontId, openText);
     const int doneWidth = renderer.getTextWidth(kSmallFontId, doneText);
-    // Centred over the headline (or starting where it starts, if the headline is shorter).
+    // Always in the middle of the page, so it sits in the same place on every list.
     const int blockWidth = box + 5 + openWidth + 16 + box + 5 + doneWidth;
-    const int headWidth = renderer.getTextWidth(headFont, headline.c_str()) + 2;
-    int x = paper.textX + (headWidth - blockWidth) / 2;
-    x = std::max(paper.textX, std::min(x, paper.right - 8 - blockWidth));
+    int x = (paper.paperLeft + paper.right - blockWidth) / 2;
     const auto smallBox = [&](const int bx, const bool done) {
       renderer.drawRect(bx, boxY, box, box, true);
       if (done) {
