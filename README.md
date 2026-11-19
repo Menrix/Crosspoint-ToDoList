@@ -70,7 +70,7 @@ Good to know:
 - The order stays as you wrote it.
 
 <details>
-<summary><h2>Send from your phone or computer</h2></summary>
+<summary><h2>Send from your phone or computer</h2><hr></summary>
 
 **First, every time:** on the reader, start **File Transfer**. Phone or computer and reader must
 be in the same Wi-Fi (or use the reader's **Create Hotspot**).
@@ -127,7 +127,7 @@ use it only in your own Wi-Fi or the reader's hotspot. It only ever writes into 
 </details>
 
 <details>
-<summary><h2>How it is built</h2></summary>
+<summary><h2>How it is built</h2><hr></summary>
 
 Every night a GitHub Action adds this to the latest official CrossPoint release and publishes
 the firmware under Releases.
@@ -135,7 +135,7 @@ the firmware under Releases.
 </details>
 
 <details>
-<summary><h2>License</h2></summary>
+<summary><h2>License</h2><hr></summary>
 
 MIT, like CrossPoint. Font [Patrick Hand](https://fonts.google.com/specimen/Patrick+Hand)
 © Patrick Wagesreiter, SIL Open Font License 1.1.
