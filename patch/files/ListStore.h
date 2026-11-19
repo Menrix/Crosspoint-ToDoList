@@ -103,15 +103,18 @@ inline bool createList(const std::string& name) {
 // The home screen keeps a scaled copy of each cover. After new covers, drop those copies
 // for the lists so the home screen makes fresh ones. (Text books keep their cache in
 // "/.crosspoint/epub_<hash of the path>", like EPUBs.)
+inline void clearListThumbs(const std::string& path) {
+  const std::string dir = "/.crosspoint/epub_" + std::to_string(std::hash<std::string>{}(path));
+  if (!Storage.exists(dir.c_str())) return;
+  for (const String& cached : Storage.listFiles(dir.c_str(), 50)) {
+    if (cached.startsWith("thumb_")) Storage.remove((dir + "/" + cached.c_str()).c_str());
+  }
+}
+
 inline void clearListThumbs() {
   for (const String& file : Storage.listFiles(kListsDir, 200)) {
     const std::string path = std::string(kListsDir) + "/" + file.c_str();
-    if (!isListPath(path)) continue;
-    const std::string dir = "/.crosspoint/epub_" + std::to_string(std::hash<std::string>{}(path));
-    if (!Storage.exists(dir.c_str())) continue;
-    for (const String& cached : Storage.listFiles(dir.c_str(), 50)) {
-      if (cached.startsWith("thumb_")) Storage.remove((dir + "/" + cached.c_str()).c_str());
-    }
+    if (isListPath(path)) clearListThumbs(path);
   }
 }
 
@@ -163,6 +166,15 @@ inline void ensureCover() {
     if (writeWholeFile(path, image.data, image.size)) changed = true;
   }
   if (changed) clearListThumbs();
+
+  // Named covers of lists that are gone (deleted or renamed) are removed.
+  std::vector<std::string> keep;
+  for (const std::string& list : allListPaths()) keep.push_back(namedCoverPath(list));
+  for (const String& file : Storage.listFiles(kCoverDir, 300)) {
+    if (!file.startsWith("list_")) continue;
+    const std::string path = std::string(kCoverDir) + "/" + file.c_str();
+    if (std::find(keep.begin(), keep.end(), path) == keep.end()) Storage.remove(path.c_str());
+  }
 }
 
 inline std::vector<std::string> loadHiddenNames() {

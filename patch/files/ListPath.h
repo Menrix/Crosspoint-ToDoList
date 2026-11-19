@@ -5,6 +5,7 @@
 // needs it too: the patch copies this same file to src/activities/reader and to lib/Txt.
 
 #include <cstdint>
+#include <cstdio>
 #include <string>
 
 namespace todolist {
@@ -51,6 +52,21 @@ inline int coverIndexFor(const std::string& listPath) {
     h = (h ^ static_cast<uint8_t>(c)) * 16777619u;
   }
   return static_cast<int>(h % kCoverCount);
+}
+
+// The cover with the list's own name on it, written by the reader (ListCoverMaker.h) the first
+// time the list is opened. Until then the list shows its plain notepad cover.
+inline std::string namedCoverPath(const std::string& listPath) {
+  const size_t slash = listPath.find_last_of('/');
+  uint32_t h = 2166136261u;
+  for (size_t i = slash == std::string::npos ? 0 : slash + 1; i < listPath.size(); i++) {
+    char c = listPath[i];
+    if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + 32);
+    h = (h ^ static_cast<uint8_t>(c)) * 16777619u;
+  }
+  char name[24];
+  snprintf(name, sizeof(name), "/list_%08x.png", static_cast<unsigned>(h));
+  return std::string(kCoverDir) + name;
 }
 
 }  // namespace todolist

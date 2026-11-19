@@ -37,6 +37,7 @@ class ListReaderActivity final : public ReaderActivity {
   std::string listName;
   std::vector<todolist::Item> items;
   bool hideDone = false;
+  bool coverChecked = false;  // own home-screen cover (with the list name) made or found
   const char* message = nullptr;  // one-off note in the footer (error, name taken ...)
 
   // Undo for the last delete, until the page changes or something else is edited.
@@ -73,6 +74,7 @@ class ListReaderActivity final : public ReaderActivity {
   void openKeyboard(Action action, int item);
   void confirmDeleteList();
   bool openNeighbourList(bool forward);
+  void ensureNamedCover();
   void drawOverlay(bool touch);
   bool handleOverlayInput(bool touch);
 

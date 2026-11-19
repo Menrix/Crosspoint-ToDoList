@@ -16,7 +16,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-READER_FILES = ("ListPath.h", "ListCore.h", "ListStore.h", "ListPaper.h", "ListCover.h", "ListCoverImages.h",
+READER_FILES = ("ListPath.h", "ListCore.h", "ListStore.h", "ListPaper.h", "ListCover.h", "ListCoverImages.h", "ListCoverMaker.h",
                 "ListReaderActivity.h", "ListReaderActivity.cpp")
 TXT_FILES = ("ListPath.h",)
 FONT_FILES = ("patrickhand_11_regular.h", "patrickhand_20_regular.h", "patrickhand_26_regular.h")
@@ -144,6 +144,8 @@ def main() -> None:
                        "std::string Txt::findCompanionCoverImage(const std::string& filepath) {\n",
                        "std::string Txt::findCompanionCoverImage(const std::string& filepath) {\n"
                        "  if (todolist::isListPath(filepath)) {  // to-do list notepad cover (Crosspoint-ToDoList)\n"
+                       "    const std::string named = todolist::namedCoverPath(filepath);  // with the list name\n"
+                       "    if (Storage.exists(named.c_str())) return named;\n"
                        "    const std::string listCover = todolist::coverPath(todolist::coverIndexFor(filepath));\n"
                        "    if (Storage.exists(listCover.c_str())) return listCover;\n"
                        "  }\n",

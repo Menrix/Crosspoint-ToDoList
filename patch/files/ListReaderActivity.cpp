@@ -16,6 +16,7 @@
 
 #include "CrossPointSettings.h"
 #include "HapticFeedback.h"
+#include "ListCoverMaker.h"
 #include "ListStore.h"
 #include "ReaderUtils.h"
 #include "RecentBooksStore.h"
@@ -210,6 +211,8 @@ void ListReaderActivity::confirmDeleteList() {
       message = tr(STR_TODO_SAVE_FAILED);
       return;
     }
+    const std::string cover = todolist::namedCoverPath(bookPath);
+    if (Storage.exists(cover.c_str())) Storage.remove(cover.c_str());
     if (RECENT_BOOKS.removeByPath(bookPath)) RECENT_BOOKS.saveToFile();
     todolist::setDoneHidden(listName, false);  // also forgets lists that no longer exist
     todolist::ensureStarterList();              // was it the last one? then a fresh "TO DO"
@@ -580,7 +583,43 @@ void ListReaderActivity::drawOverlay(const bool touch) {
   }
 }
 
+// The list's own home-screen cover: the notepad page with the list name as heading. Made once,
+// the first time the list is shown (a new or renamed list gets it right away). Drawn into the
+// screen memory before the page itself, so nothing of it is ever visible.
+void ListReaderActivity::ensureNamedCover() {
+  if (coverChecked) return;
+  coverChecked = true;
+  const std::string path = todolist::namedCoverPath(bookPath);
+  if (Storage.exists(path.c_str())) return;
+  const auto orientation = renderer.getOrientation();
+  renderer.setOrientation(GfxRenderer::Portrait);
+  renderer.clearScreen();
+  todolist::covermaker::drawBase(renderer, todolist::coverIndexFor(bookPath));
+
+  const int* box = todolist::kTitleBox;
+  const int boxWidth = box[2] - box[0] - 8;
+  std::string title = todolist::toHeadline(listName);
+  int font = kTitleFontId;
+  if (renderer.getTextWidth(font, title.c_str()) > boxWidth) {
+    font = kListFontId;
+    title = renderer.truncatedText(font, title.c_str(), boxWidth);
+  }
+  const int top = box[3] - 14 - renderer.getFontAscenderSize(font);
+  for (int ox = 0; ox < 3; ox++) {  // felt-pen strokes, like the headline
+    renderer.drawText(font, box[0] + 4 + ox, top, title.c_str(), true);
+  }
+  const bool saved = todolist::covermaker::savePng(renderer, path);
+  renderer.setOrientation(orientation);
+  renderer.clearScreen();
+  if (saved) {
+    todolist::clearListThumbs(bookPath);
+  } else {
+    LOG_ERR("TODO", "could not write the cover %s", path.c_str());
+  }
+}
+
 void ListReaderActivity::renderBook() {
+  ensureNamedCover();
   const bool touch = mappedInput.hasTouch();
   int top = 0;
   int right = 0;

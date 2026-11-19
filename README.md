@@ -11,6 +11,7 @@ firmware.
 - Send entries from your phone or computer
 - No double entries (upper or lower case doesn't matter)
 - Lists are plain text files
+- On the home screen every list is a notepad cover with its own name
 
 ## Install
 
