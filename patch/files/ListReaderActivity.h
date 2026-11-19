@@ -40,7 +40,7 @@ class ListReaderActivity final : public ReaderActivity {
   std::string listName;
   std::vector<todolist::Item> items;
   bool hideDone = false;
-  bool coverDirty = false;    // the home-screen picture of this list must be redrawn on exit
+  bool coverDirty = false;    // no home-screen picture yet: made on exit
   bool listGone = false;      // deleted or renamed: no picture on exit
   const char* message = nullptr;  // one-off note in the footer (error, name taken ...)
 

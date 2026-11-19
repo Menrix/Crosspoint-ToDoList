@@ -85,7 +85,6 @@ void ListReaderActivity::newSheet(const int page) {
 }
 
 bool ListReaderActivity::save() {
-  coverDirty = true;
   if (todolist::saveList(bookPath, items)) return true;
   message = tr(STR_TODO_SAVE_FAILED);
   return false;
@@ -126,7 +125,6 @@ void ListReaderActivity::toggleEntry(const int pageEntry) {
 
 void ListReaderActivity::toggleHideDone() {
   hideDone = !hideDone;
-  coverDirty = true;
   todolist::setDoneHidden(listName, hideDone);
   currentPage = 0;
   selected = 0;
@@ -154,7 +152,9 @@ void ListReaderActivity::onEnter() {
   if (changed) RECENT_BOOKS.saveToFile();
 }
 
-// Leaving a list that changed: its home-screen picture becomes the list itself (the first page).
+// Leaving a list that has no home-screen picture yet (new or renamed): the picture becomes the
+// list itself (its first page). It is made only then, not after every change, because the home
+// screen then needs a few seconds to prepare the new picture.
 void ListReaderActivity::onExit() {
   saveCoverPicture();
   ReaderActivity::onExit();
