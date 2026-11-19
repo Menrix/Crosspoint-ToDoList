@@ -154,6 +154,13 @@ use it only in your own Wi-Fi or the reader's hotspot. It only ever writes into 
 
 </details>
 
+## Why a firmware and not a plugin?
+
+The lists can't be a CrossPoint plugin: they need to hook into the reader itself, the home screen
+and File Transfer, and plugins can't reach those parts. So they are built into the latest
+**official** CrossPoint: as soon as a new CrossPoint version is out, a new build follows, usually
+within a day. You never fall behind official CrossPoint.
+
 ## More add-ons
 
 - [Crosspoint-Dogear](https://github.com/Menrix/Crosspoint-Dogear): bookmarks show as a folded
