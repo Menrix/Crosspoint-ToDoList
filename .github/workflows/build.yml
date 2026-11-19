@@ -1,9 +1,10 @@
 name: Build CrossPoint with to-do lists
 
-# Runs every night and checks for a new official CrossPoint release.
-# If there is one (and it is not built yet), it adds the to-do lists, builds the firmware for the
-# Xteink X4 Pro and for the X3/X4 and publishes both in one release here.
-# "Run workflow" (Actions tab) starts it by hand; tick "force" to rebuild an existing version.
+# Runs every night. When there is a new official CrossPoint release or the add-on changed, it adds
+# the to-do lists, builds the firmware for the Xteink X4 Pro and for the X3/X4 and publishes both
+# in a new release here. Every build has its own number: 2.0.0-todo.<build>. The reader shows it
+# in Settings, and "Check for Updates" finds newer builds by it.
+# "Run workflow" (Actions tab) starts it by hand; tick "force" to build even without changes.
 
 on:
   schedule:
@@ -15,7 +16,7 @@ on:
         required: false
         default: ""
       force:
-        description: "Rebuild even if this version already has a release"
+        description: "Build even if nothing changed since the last release"
         type: boolean
         default: false
 
@@ -35,6 +36,7 @@ jobs:
     outputs:
       tag: ${{ steps.ver.outputs.tag }}
       version: ${{ steps.ver.outputs.version }}
+      full: ${{ steps.ver.outputs.full }}
       skip: ${{ steps.ver.outputs.skip }}
     steps:
       - name: Find CrossPoint version
@@ -51,13 +53,17 @@ jobs:
             tag="$(gh api "repos/$UPSTREAM/releases/latest" --jq .tag_name)"
           fi
           version="${tag#v}"
+          full="${version}-todo.${GITHUB_RUN_NUMBER}"
+          source="Built from CrossPoint ${tag} and Crosspoint-ToDoList ${GITHUB_SHA::7}."
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          if gh release view "$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && [ "${FORCE:-false}" != "true" ]; then
-            echo "CrossPoint $version is already built. Nothing to do."
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          last="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .body 2>/dev/null || true)"
+          if [ "${FORCE:-false}" != "true" ] && printf '%s' "$last" | grep -qF "$source"; then
+            echo "Nothing changed since the last release. Nothing to do."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Building CrossPoint $version with to-do lists."
+            echo "Building $full."
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -95,6 +101,17 @@ jobs:
       - name: Add the to-do lists
         run: python3 todolist/patch/apply_todolist.py crosspoint "$GITHUB_REPOSITORY"
 
+      - name: Set the version (${{ needs.check.outputs.full }})
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+          FULL: ${{ needs.check.outputs.full }}
+        run: |
+          set -euo pipefail
+          # Shown in Settings and compared by "Check for Updates".
+          test "$(grep -c "^version = ${VERSION}\$" crosspoint/platformio.ini)" = 1 || \
+            { echo "TODOLIST PATCH FAILED: version line not found in platformio.ini"; exit 1; }
+          sed -i "s/^version = ${VERSION}\$/version = ${FULL}/" crosspoint/platformio.ini
+
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -129,12 +146,12 @@ jobs:
         run: |
           # The on-device updater looks for exactly this file name.
           cp "crosspoint/.pio/build/${{ matrix.env }}/firmware.bin" \
-             "crosspoint-${{ needs.check.outputs.version }}-${{ matrix.device }}.bin"
+             "crosspoint-${{ needs.check.outputs.full }}-${{ matrix.device }}.bin"
 
       - uses: actions/upload-artifact@v6
         with:
           name: firmware-${{ matrix.device }}
-          path: crosspoint-${{ needs.check.outputs.version }}-${{ matrix.device }}.bin
+          path: crosspoint-${{ needs.check.outputs.full }}-${{ matrix.device }}.bin
           if-no-files-found: error
 
   publish:
@@ -153,6 +170,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.check.outputs.version }}
+          FULL: ${{ needs.check.outputs.full }}
           TAG: ${{ needs.check.outputs.tag }}
         run: |
           set -euo pipefail
@@ -162,24 +180,21 @@ jobs:
             echo "No firmware was built. Nothing to publish."
             exit 1
           fi
-          notes="CrossPoint ${VERSION} with to-do lists.
+          notes="CrossPoint ${VERSION} with to-do lists, build ${FULL}.
 
-          - crosspoint-${VERSION}-x4pro.bin: Xteink X4 Pro (tested)
-          - crosspoint-${VERSION}-x3-x4.bin: Xteink X3 and X4 (one file for both) - NOT TESTED on a device.
+          - crosspoint-${FULL}-x4pro.bin: Xteink X4 Pro (tested)
+          - crosspoint-${FULL}-x3-x4.bin: Xteink X3 and X4 (one file for both) - NOT TESTED on a device.
             No touch screen there: everything runs over the buttons, which makes the lists harder to use.
 
           Install: copy the file to the SD card root, then Settings -> SD Card Firmware Update.
           Or: https://crosspointreader.com/#flash-tools -> your device -> Custom .bin
           Later updates: Settings -> Check for Updates.
 
-          Official changes in this version: https://github.com/${UPSTREAM}/releases/tag/${TAG}"
-          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$VERSION" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
-            gh release edit "$VERSION" --notes "$notes" --repo "$GITHUB_REPOSITORY"
-          else
-            gh release create "$VERSION" "${files[@]}" --repo "$GITHUB_REPOSITORY" \
-              --title "CrossPoint ${VERSION} + to-do lists" --notes "$notes" --latest
-          fi
+          Official changes in this version: https://github.com/${UPSTREAM}/releases/tag/${TAG}
+
+          Built from CrossPoint ${TAG} and Crosspoint-ToDoList ${GITHUB_SHA::7}."
+          gh release create "$FULL" "${files[@]}" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "CrossPoint ${VERSION} + to-do lists (build ${FULL##*.})" --notes "$notes" --latest
           # Still report a failed device build (GitHub then sends an email).
           if [ "${{ needs.build.result }}" != "success" ]; then
             echo "At least one device build failed; published what was built."

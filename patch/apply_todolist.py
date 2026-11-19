@@ -207,6 +207,26 @@ def main() -> None:
                        "home starter list")
     home.write_text(src, encoding="utf-8")
 
+    # 3f) "Check for Updates": a newer build of this add-on for the same CrossPoint version is an
+    # update too. Versions look like "2.0.0-todo.12" (or "2.0.0-addons.3" in the collection).
+    ota = root / "src" / "network" / "OtaUpdater.cpp"
+    src = ota.read_text(encoding="utf-8")
+    src = replace_once(src, '  if (strstr(currentVersion, "-rc") != nullptr) {\n',
+                       '  // Crosspoint add-ons: same CrossPoint version, newer add-on build number.\n'
+                       '  if (strstr(latestVersion.c_str(), "-todo.") != nullptr ||\n'
+                       '      strstr(latestVersion.c_str(), "-addons.") != nullptr) {\n'
+                       '    const auto buildOf = [](const char* v) {\n'
+                       '      const char* dash = strchr(v, \'-\');\n'
+                       '      const char* dot = dash ? strrchr(dash, \'.\') : nullptr;\n'
+                       '      long n = 0;\n'
+                       '      for (const char* c = dot ? dot + 1 : ""; *c >= \'0\' && *c <= \'9\'; c++) n = n * 10 + (*c - \'0\');\n'
+                       '      return n;\n'
+                       '    };\n'
+                       '    return buildOf(latestVersion.c_str()) > buildOf(currentVersion);\n'
+                       '  }\n'
+                       '  if (strstr(currentVersion, "-rc") != nullptr) {\n', "update build number")
+    ota.write_text(src, encoding="utf-8")
+
     # 4) Texts. Languages without their own entry fall back to English.
     translations = root / "lib" / "I18n" / "translations"
     for file_name, entries in STRINGS.items():
