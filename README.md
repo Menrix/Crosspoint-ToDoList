@@ -154,7 +154,7 @@ needs, the build stops with `TODOLIST PATCH FAILED: ...` instead of making a bro
 Self-built firmware lacks the official key for CrossPoint's LCP service (only relevant for
 LCP-protected books from it); everything else works as in the official release.
 
-Made with the help of [Claude](https://claude.ai).
+Made with the help of Claude.
 
 ## License
 
