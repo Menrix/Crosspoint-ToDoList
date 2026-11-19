@@ -254,38 +254,37 @@ inline void paintEye(const int cx, const int cy, const bool closed, Px&& px) {
   const auto curve = [&](const int x, const double depth) {
     return static_cast<int>(std::lround(depth * std::cos(x / static_cast<double>(half) * halfPi)));
   };
-  // Five lashes along a lid, pointing away from a centre point (cx, cy + from).
-  const auto lashes = [&](const double depth, const int from, const int length) {
-    for (const int lx : {-12, -6, 0, 6, 12}) {
-      const int y0 = cy + curve(lx, depth);
-      const double vx = lx;
-      const double vy = y0 - (cy + from);
-      const double n = std::sqrt(vx * vx + vy * vy);
-      line(px, cx + lx, y0, cx + lx + static_cast<int>(std::lround(vx / n * length)),
-           y0 + static_cast<int>(std::lround(vy / n * length)), 2);
-    }
-  };
   if (!closed) {
-    // open: almond outline, a big round pupil with a light spot, lashes on top
-    int lastUp = cy;
-    int lastDown = cy;
-    for (int x = -half; x <= half; x++) {
-      const int up = cy - curve(x, 10);
-      const int down = cy + curve(x, 7);
-      if (x > -half) {
-        line(px, cx + x - 1, lastUp, cx + x, up, 2);
-        line(px, cx + x - 1, lastDown, cx + x, down, 2);
+    // open: a round upper lid, a flatter lower one, the pupil in the middle (cut by the lids, so
+    // it looks relaxed, not staring) with a light spot, and lashes on top
+    const auto upper = [&](const int x) {
+      const double t = x / static_cast<double>(half);
+      return cy - static_cast<int>(std::lround(11 * std::sqrt(std::max(0.0, 1 - t * t))));
+    };
+    const auto lower = [&](const int x) { return cy + curve(x, 7); };
+    constexpr int r = 7;
+    for (int y = -r; y <= r; y++) {
+      for (int x = -r; x <= r; x++) {
+        if (x * x + y * y <= r * r && cy + y > upper(x) && cy + y < lower(x)) px(cx + x, cy + y, true);
       }
-      lastUp = up;
-      lastDown = down;
     }
-    fillCircle(px, cx, cy - 2, 7);
     for (int y = -1; y <= 1; y++) {  // the light spot
       for (int x = -1; x <= 1; x++) {
-        if (x * x + y * y <= 1) px(cx + 3 + x, cy - 5 + y, false);
+        if (x * x + y * y <= 1) px(cx + 3 + x, cy - 3 + y, false);
       }
     }
-    lashes(-10, 14, 5);
+    for (int x = -half + 1; x <= half; x++) {
+      line(px, cx + x - 1, upper(x - 1), cx + x, upper(x), 2);
+      line(px, cx + x - 1, lower(x - 1), cx + x, lower(x), 2);
+    }
+    for (const int lx : {-12, -6, 0, 6, 12}) {  // lashes, pointing away from below the eye
+      const int y0 = upper(lx);
+      const double vx = lx;
+      const double vy = y0 - (cy + 14);
+      const double n = std::sqrt(vx * vx + vy * vy);
+      line(px, cx + lx, y0, cx + lx + static_cast<int>(std::lround(vx / n * 5)),
+           y0 + static_cast<int>(std::lround(vy / n * 5)), 2);
+    }
   } else {
     // closed: the lid as a curve like a smile, lashes hanging down
     int last = cy;
