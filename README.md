@@ -72,13 +72,10 @@ Cheese
 ```
 
 Put the file into the folder **`Lists`** on the SD card. That's all: the reader shows it as a
-list. When you tick something, the reader marks it in the file with `[x]`:
+list.
 
-```
-[x] Milk
-[ ] Bread
-[ ] Cheese
-```
+You never have to type boxes or marks yourself. The reader keeps track of what is ticked by
+itself (it adds `[ ]` and `[x]` in the file), so don't be surprised if you open the file later.
 
 Good to know:
 - Several things in one line are fine too: `Milk, Bread, Cheese`.
