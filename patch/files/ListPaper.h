@@ -296,7 +296,7 @@ inline void paintEye(const int cx, const int cy, const bool closed, Px&& px) {
       lastUp = up;
       lastDown = down;
     }
-    fillCircle(px, cx, cy - 2, 7);
+    fillCircle(px, cx, cy - 3, 7);
     for (int y = -1; y <= 1; y++) {  // the light spot
       for (int x = -1; x <= 1; x++) {
         if (x * x + y * y <= 1) px(cx + 3 + x, cy - 5 + y, false);
