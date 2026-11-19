@@ -150,6 +150,13 @@ use it only in your own Wi-Fi or the reader's hotspot. It only ever writes into 
 
 </details>
 
+## More add-ons
+
+- [Crosspoint-Dogear](https://github.com/Menrix/Crosspoint-Dogear): bookmarks show as a folded
+  page corner.
+- [Crosspoint-Addons](https://github.com/Menrix/Crosspoint-Addons): **all add-ons in one
+  firmware**. A growing collection; install this one if you want more than one add-on.
+
 ## How it is built
 
 Every night a GitHub Action adds this to the latest official CrossPoint release and publishes
