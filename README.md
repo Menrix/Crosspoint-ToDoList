@@ -1,90 +1,70 @@
 # CrossPoint To-Do List
 
 To-do and shopping lists for the [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader)
-firmware: tick them off on the reader, write them on the reader, or send entries from your phone
-or computer.
+firmware.
 
 ![A shopping list on the Xteink X4 Pro](images/list.jpg)
 
-- Looks like a page torn from a spiral notepad, in a handwriting font
-- Tap the box to tick an entry, hide checked entries per list
-- Add, edit and delete entries and lists right on the reader
-- No double entries: an entry that is already on the list is not added again, whatever the
-  upper and lower case (a done one is simply opened again)
-- Lists are plain text files, so any text editor works too
-- On the home screen every list shows as a handwritten notepad page
+- Notepad look in a handwriting font
+- Tick, add, edit and delete entries and lists right on the reader
+- Hide checked entries per list
+- Send entries from your phone or computer
+- No double entries (upper or lower case doesn't matter)
+- Lists are plain text files
 
 ## Install
 
-Download the file for your device from **[Releases](../../releases)**:
+Get the file for your device from **[Releases](../../releases)**:
 
 | Device | File |
 | --- | --- |
 | Xteink X4 Pro | `crosspoint-<version>-x4pro.bin` |
 | Xteink X3 and X4 | `crosspoint-<version>-x3-x4.bin` |
 
-> **X3 and X4: not tested on a device.** Only the X4 Pro is tested. The X3 and X4 have no touch
-> screen, so everything runs over the few buttons, which makes the lists harder to use there.
-> Feedback welcome.
+> **X3 and X4: not tested.** No touch screen there, so everything runs over the buttons, which
+> makes the lists harder to use.
 
-Then either copy it to the SD card root and use **Settings → SD Card Firmware Update**, or flash it
-over USB at <https://crosspointreader.com/#flash-tools> (Chrome or Edge, **Custom .bin**).
-Later, **Settings → Check for Updates** gets new versions from here.
+Copy it to the SD card and use **Settings → SD Card Firmware Update**. Later updates:
+**Settings → Check for Updates**.
 
 ## Use
 
-Open a list from the file browser or the library, like a book. A first list, **TO DO**, is
-already there. List names are written in capitals, like the headline.
+Open a list like a book. A first list, **TO DO**, is already there.
 
 | What | X4 Pro (touch) | X3 / X4 (buttons) |
 | --- | --- | --- |
-| Tick / untick | Tap the box margin on the left | Left / Right to pick, **Confirm** |
-| Turn the page | Swipe or tap elsewhere (as in Settings) | Side keys |
-| Add entries | Tap an empty line | **Confirm** held → menu |
-| Edit or delete an entry | Hold the entry | **Confirm** held → menu |
-| New list, rename, delete list | Tap the headline | **Confirm** held → menu |
-| Hide / show checked | Reader-menu gesture (the bottom line says which) | **Confirm** held → menu |
+| Tick | Tap the box | Left / Right, **Confirm** |
+| Add entries | Tap an empty line | Hold **Confirm** → menu |
+| Edit or delete an entry | Hold the entry | Hold **Confirm** → menu |
+| New list, rename, delete list | Tap the headline | Hold **Confirm** → menu |
+| Hide / show checked | Reader-menu gesture | Hold **Confirm** → menu |
 
-- **Several entries at once:** separate them with `,` or `;`, e.g. `Milk, Bread; Cheese`.
-  When editing, the first part replaces the entry and the rest go right below it.
-- **Delete:** empty the text, or choose delete. The bottom line offers **undo**.
-- **Delete a whole list:** tap the headline → **delete list**. It asks first, then removes the
-  list with its cover and returns to the home screen.
+- `,` or `;` separate entries: `Milk, Bread; Cheese` is three. For a comma inside an entry,
+  use a dash: `Apples - the red ones`.
+- A deleted entry can be brought back with **undo** in the bottom line. Deleting a whole list
+  asks first.
 
 ## Lists on the SD card
 
-Each list is a text file in **`/Lists`**, one entry per line. `[ ]` is open, `[x]` is done:
+Each list is a text file in `/Lists`, one entry per line, `[ ]` open, `[x]` done:
 
 ```
 [x] Milk
 [ ] Bread
 ```
 
-You don't have to write the boxes yourself. A list typed or pasted like this works too:
+Plain lines (also with `-`, `*` or `1.` in front) work too and become open entries.
+The order always stays as written.
+
+## Send from a phone or computer
+
+Start **File Transfer** on the reader, then either upload a `.txt` into `/Lists` in the
+browser, or send entries (they are added to the list; use the reader's IP if
+`crosspoint.local` doesn't work):
 
 ```
-- Milk
-* Bread
-1. Cheese
+curl -d "list=Shopping" --data-urlencode "text=Milk, Bread" http://crosspoint.local/api/lists/add
 ```
-
-Every line becomes an open entry; the dashes, dots and numbers in front are dropped and empty
-lines are left out. The order always stays as written, also when you tick entries.
-
-**Commas and semicolons separate entries everywhere** (on the reader, in files, when sending):
-`Milk, Bread; Cheese` is three entries. A comma between digits stays (`1,5 kg flour`). For a
-comma inside one entry, write a dash instead: `Apples - the red ones`.
-
-## Send entries from a phone or computer
-
-Start **File Transfer** on the reader (home Wi-Fi, or **Create Hotspot** on the go). Sent entries are
-always **added**: duplicates are skipped, done ones are opened again. Up to 32 KB per send.
-
-- **Upload a file:** put a `.txt` into `/Lists` with File Transfer in the browser
-  (this replaces that list).
-- **Terminal:** `curl -d "list=Shopping" --data-urlencode "text=Milk, Bread" http://crosspoint.local/api/lists/add`
-
-If `crosspoint.local` does not work, use the IP address shown on the reader.
 
 <details>
 <summary>Share menu on iPhone, iPad and Mac (Shortcuts)</summary>
@@ -126,8 +106,8 @@ reader's hotspot. It only ever writes files in `/Lists`.
 
 ## How it is built
 
-Only the add-on lives here. Every night a GitHub Action adds it to the latest official
-CrossPoint release and publishes the firmware under Releases.
+Every night a GitHub Action adds this to the latest official CrossPoint release and publishes
+the firmware under Releases.
 
 <details>
 <summary>Files</summary>
@@ -148,12 +128,9 @@ CrossPoint release and publishes the firmware under Releases.
 
 </details>
 
-Self-built firmware lacks the official key for CrossPoint's LCP service (only relevant for
-LCP-protected books from it); everything else works as in the official release.
-
 Made with the help of Claude.
 
 ## License
 
-MIT, like CrossPoint. The [Patrick Hand](https://fonts.google.com/specimen/Patrick+Hand) font is
-© Patrick Wagesreiter, SIL Open Font License 1.1 (`licenses/PatrickHand-OFL.txt`).
+MIT, like CrossPoint. Font [Patrick Hand](https://fonts.google.com/specimen/Patrick+Hand)
+© Patrick Wagesreiter, SIL Open Font License 1.1.
